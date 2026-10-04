@@ -60,3 +60,10 @@ Bidding speech is intentionally brief: bids are announced as the number only (fo
 - Bidding always has a 60-second timeout; timeout means Pass.
 - Last 10 seconds are shown urgently and tick when sound is enabled.
 - Bot strategy tightened to preserve A/K on uncertain teammate tricks and to protect 3♠ from unsafe trump exposure.
+
+
+## v11 flexible bidding
+- The first actual bidder may open at any legal bid from 160 through 250 in increments of 5.
+- When a challenger raises, the incumbent may Stay at that bid, Raise directly to a higher legal bid, or Pass.
+- If the incumbent raises directly, the same challenger retains priority and must Raise above the new bid or Pass.
+- The winner of each head-to-head duel remains incumbent against the next unpassed player.
