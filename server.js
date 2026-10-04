@@ -85,7 +85,7 @@ function scheduleBot(g){
   else if(g.phase==='play'&&!g.resolvingTrick&&g.turn!=null&&isBot(g,g.turn)){i=g.turn;action='play';}
   if(!action)return;
   // Human-readable pacing: bots pause before acting so bids and cards can be followed.
-  const baseDelay=action==='contract'?1800:action==='bid'?1250:1750;
+  const baseDelay=action==='contract'?1800:action==='bid'?2250:1750;
   const jitter=action==='contract'?450:action==='bid'?400:500;
   g.botTimer=setTimeout(()=>{g.botTimer=null;if(!rooms.has(g.code))return;
     if(action==='bid'&&g.phase==='bidding'&&g.bidTurn===i)botBid(g,i);
