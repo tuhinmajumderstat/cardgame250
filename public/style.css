@@ -87,3 +87,6 @@ header{min-height:74px}h1{font-size:38px}header p{font-size:15px}
 
 /* v8 rules/timer controls */
 .lobby-settings{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:10px}.lobby-settings label{display:flex;flex-direction:column;gap:4px;font-weight:700}.lobby-settings select{min-width:170px}.countdown{display:inline-block;min-width:38px;padding:2px 7px;border-radius:8px;background:#e8f0e8;color:#173d25}.countdown.urgent{background:#ffe0df;color:#a11212;font-size:1.08em}
+
+/* v10 landing help, match format, and temporary AI controls */
+.how-to{margin-top:24px;padding-top:18px;border-top:1px solid rgba(255,255,255,.14)}.how-to h2{margin:0 0 12px}.how-to details{margin:8px 0;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.055)}.how-to summary{cursor:pointer;font-weight:800}.how-to p{margin:8px 0 2px;line-height:1.45}.new-player-note{margin-top:14px!important}.auto-btn{background:#e9e1c7;color:#3f3214;border-color:#9f8a50;white-space:nowrap}.match-over{font-weight:800;font-size:1.08rem}.lobby-settings label{min-width:160px}
