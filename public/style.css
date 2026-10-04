@@ -30,3 +30,52 @@
 /* Cards already played on the table stay fully vibrant; only illegal cards in your hand are masked. */
 .card.display-card{opacity:1;filter:none;cursor:default;transform:none}
 .trick .card.display-card{box-shadow:0 2px 7px rgba(0,0,0,.28)}
+
+
+/* Compact desktop table + hand layout */
+main{max-width:1450px;padding:14px 18px}
+header{min-height:74px}h1{font-size:38px}header p{font-size:15px}
+#status.panel{margin:10px 0;padding:12px 16px}
+.play-layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:16px;align-items:stretch}
+#table{position:relative;min-height:430px;margin:0;padding:0;border-width:8px;overflow:hidden}
+#players{position:absolute;inset:0;z-index:2;pointer-events:none}
+#players .player{position:absolute;margin:0;min-width:170px;max-width:210px;padding:8px 10px;text-align:left;pointer-events:auto}
+#players .player:nth-child(1){left:50%;top:12px;transform:translateX(-50%)}
+#players .player:nth-child(2){right:22px;top:92px}
+#players .player:nth-child(3){right:70px;bottom:28px}
+#players .player:nth-child(4){left:70px;bottom:28px}
+#players .player:nth-child(5){left:22px;top:92px}
+#center{position:absolute;inset:92px 175px 90px;display:flex;align-items:center;justify-content:center;z-index:3}
+#center .trick{margin:0;gap:4px}
+#lastTrick{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);z-index:5;width:min(720px,80%)}
+.last-trick-box{margin:0 auto;padding:8px}
+.hand-panel.panel{margin:0;padding:12px;min-width:0}
+.hand-panel h3{margin:0 0 10px;text-align:center}
+.hand{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;align-content:start}
+.hand .card{width:100%;height:112px;margin:0;padding:7px;min-width:0}
+.hand .card-corner{font-size:22px}.hand .card-suit{font-size:34px}
+#controls.panel{margin:10px 0;padding:10px 14px;min-height:58px}
+#game>.panel:last-child{margin-top:10px}
+
+@media(max-width:1000px){
+  .play-layout{grid-template-columns:1fr}
+  #table{min-height:390px}
+  .hand-panel{order:2}
+  .hand{grid-template-columns:repeat(5,minmax(52px,1fr))}
+  .hand .card{height:92px}
+}
+@media(max-width:700px){
+  main{padding:10px}
+  #table{min-height:370px;margin:0}
+  #players .player{min-width:125px;max-width:155px;font-size:12px;padding:6px}
+  #players .player:nth-child(1){top:8px}
+  #players .player:nth-child(2){right:8px;top:82px}
+  #players .player:nth-child(3){right:30px;bottom:18px}
+  #players .player:nth-child(4){left:30px;bottom:18px}
+  #players .player:nth-child(5){left:8px;top:82px}
+  #center{inset:95px 70px 85px}
+  #center .trick{gap:0}
+  .hand{gap:4px}
+  .hand .card{height:78px;padding:4px}
+  .hand .card-corner{font-size:17px}.hand .card-suit{font-size:25px}
+}
