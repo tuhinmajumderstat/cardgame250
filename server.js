@@ -115,88 +115,98 @@ function highestOutstandingInSuit(k,s){
 }
 function chooseBotCard(g,i){
   const k=botKnowledge(g,i), legal=k.hand.filter(c=>k.legal.has(c.id));if(legal.length<=1)return legal[0]?.id;
-  const teammate=j=>knownTeammate(g,k,i,j), lead=k.trick[0]?.card.s, winner=currentTrickWinner(g);
+  const teammate=j=>knownTeammate(g,k,i,j), winner=currentTrickWinner(g), current=currentWinningEntry(g);
   const partnerWinning=winner!=null&&teammate(winner), safePartnerWin=partnerWinning&&safelyWinningForBot(g,k,i,winner);
-  const trickPoints=k.trick.reduce((z,x)=>z+pts(x.card),0);
-  const rankAsc=(a,b)=>rankValue(a.r)-rankValue(b.r), pointsDesc=(a,b)=>pts(b)-pts(a)||rankValue(a.r)-rankValue(b.r), pointsAsc=(a,b)=>pts(a)-pts(b)||rankValue(a.r)-rankValue(b.r);
+  const trickPoints=k.trick.reduce((z,x)=>z+pts(x.card),0), bidderTeam=k.myTeam==='bidder';
+  const rankAsc=(a,b)=>rankValue(a.r)-rankValue(b.r), pointsAsc=(a,b)=>pts(a)-pts(b)||rankValue(a.r)-rankValue(b.r);
+  const controlRank=c=>c.r==='A'?5:c.r==='K'?4:c.r==='Q'?3:c.r==='J'?2:c.r==='10'?1:0;
   const wouldWin=c=>{const temp={...g,trick:[...g.trick,{player:i,card:c}]};return currentTrickWinner(temp)===i;};
   const winners=legal.filter(wouldWin), losers=legal.filter(c=>!wouldWin(c));
-  const bidderTeam=k.myTeam==='bidder';
+  const cheapest=cards=>cards.slice().sort((a,b)=>pts(a)-pts(b)||controlRank(a)-controlRank(b)||rankValue(a.r)-rankValue(b.r))[0];
+  const disposableFeed=cards=>cards.slice().sort((a,b)=>{
+    // Feed points, but value future control: 10/5 are preferred cargo; A/K/Q/J are preserved when possible.
+    const pa=['10','5'].includes(a.r)?0:['J','Q'].includes(a.r)?2:['K','A'].includes(a.r)?4:1;
+    const pb=['10','5'].includes(b.r)?0:['J','Q'].includes(b.r)?2:['K','A'].includes(b.r)?4:1;
+    return pa-pb||pts(b)-pts(a)||rankValue(a.r)-rankValue(b.r);
+  })[0];
 
-  // 1) 3S is 30-point cargo. If a teammate is safely taking ANY suit and 3S is legal, deliver it immediately.
+  // PRIME DIRECTIVE: if a known teammate already has a guaranteed winner, do not overtake it.
+  // This outranks the 3S-catching heuristic. Example: bidder K♠, partner feeds 3♠, this bot holds A♠ + lower ♠ -> play lower ♠, save A♠.
+  if(safePartnerWin&&losers.length){
+    if(bidderTeam){const three=losers.find(c=>c.id==='3S');if(three)return three.id;}
+    const pointCargo=losers.filter(c=>pts(c)>0&&!['A','K','Q','J'].includes(c.r));
+    if(pointCargo.length)return disposableFeed(pointCargo).id;
+    return cheapest(losers).id;
+  }
+
+  // If a teammate is only CURRENTLY winning (not proven safe), do not sacrifice control cards just to feed points.
+  if(partnerWinning&&losers.length){
+    const low=losers.filter(c=>!['A','K','Q','J'].includes(c.r)&&c.id!=='3S');
+    return cheapest(low.length?low:losers).id;
+  }
+
+  // 3♠ is 30-point cargo. Deliver it only to a teammate whose trick is actually safe.
   if(bidderTeam&&safePartnerWin){const three=legal.find(c=>c.id==='3S'&&!wouldWin(c));if(three)return three.id;}
 
-  // 2) If a teammate has put 3S into this trick, make a strong effort to catch those 30 points.
-  if(bidderTeam&&k.trick.some(x=>x.card.id==='3S'&&teammate(x.player))&&winners.length){
-    return winners.sort((a,b)=>rankValue(a.r)-rankValue(b.r)||pts(a)-pts(b))[0].id;
+  // If teammate has exposed 3♠ and our team is NOT already safely winning, rescue it with the cheapest sufficient winner.
+  if(bidderTeam&&k.trick.some(x=>x.card.id==='3S'&&teammate(x.player))&&!safePartnerWin&&winners.length){
+    return winners.slice().sort((a,b)=>rankValue(a.r)-rankValue(b.r)||controlRank(a)-controlRank(b))[0].id;
   }
 
-  // 3) Feed ordinary point cards to a SAFE teammate trick. Preserve an unnecessary superior A/K when a lower legal card can feed instead.
-  if(safePartnerWin){
-    const nonWinning=legal.filter(c=>!wouldWin(c));
-    // A/K are control cards, not ordinary 10-point cargo. Preserve them unless forced.
-    const expendable=nonWinning.filter(c=>!['A','K'].includes(c.r));
-    if(expendable.length){const feed=expendable.slice().sort(pointsDesc);return feed[0].id;}
-    const zero=nonWinning.filter(c=>pts(c)===0);if(zero.length)return zero.sort(rankAsc)[0].id;
-  }
-
-  // 4) Never overtake a teammate merely because we can. Follow suit is mandatory, so this applies only when another legal loser exists.
-  if(partnerWinning&&losers.length){const cheap=losers.filter(c=>!['A','K'].includes(c.r));return (cheap.length?cheap:losers).sort(pointsAsc)[0].id;}
-
-  // 5) Bidder-team lead strategy: draw/exhaust trump even before partners are publicly revealed.
+  // Lead strategy for bidder team: strip opponents' trump, but do not blindly burn multiple top controls.
   if(!k.trick.length&&bidderTeam&&g.trump!=='NT'){
-    const myTrumps=legal.filter(c=>c.s===g.trump);
-    const totalTrump=deck().filter(c=>c.s===g.trump).length;
+    const myTrumps=legal.filter(c=>c.s===g.trump), totalTrump=deck().filter(c=>c.s===g.trump).length;
     const outsideTrump=Math.max(0,totalTrump-k.trumpPlayed-myTrumps.length);
     if(myTrumps.length&&outsideTrump>0){
-      // Lead a strong trump. If the higher trump is a called teammate card, it is safe to lead the next one down.
       const calledOutstanding=new Set(g.calls.filter(id=>id.endsWith(g.trump)&&!k.playedIds.has(id)));
-      const sorted=myTrumps.slice().sort((a,b)=>rankValue(b.r)-rankValue(a.r));
-      const top=sorted[0];
+      const sorted=myTrumps.slice().sort((a,b)=>rankValue(b.r)-rankValue(a.r)), top=sorted[0];
       const higher=deck().filter(c=>c.s===g.trump&&rankValue(c.r)>rankValue(top.r)&&!k.playedIds.has(c.id));
       if(!higher.length||higher.every(c=>calledOutstanding.has(c.id)))return top.id;
-      // Even without control, partners commonly help strip trump; use the cheapest trump rather than burning a top card blindly.
-      return myTrumps.slice().sort(rankAsc)[0].id;
+      const expendable=myTrumps.filter(c=>!['A','K'].includes(c.r)&&c.id!=='3S');
+      return (expendable.length?expendable:myTrumps).slice().sort(rankAsc)[0].id;
     }
   }
 
-  // 6) Hidden-partner feeding: lead points into another called high-card suit (especially a called Ace).
+  // Hidden-partner feeding: a called high card gives team control, but feed disposable points rather than A/K/Q/J controls.
   if(!k.trick.length&&bidderTeam){
-    const own=new Set(k.hand.map(c=>c.id));
-    const otherCalls=g.calls.filter(id=>!own.has(id)&&!k.playedIds.has(id));
+    const own=new Set(k.hand.map(c=>c.id)), otherCalls=g.calls.filter(id=>!own.has(id)&&!k.playedIds.has(id));
     for(const id of otherCalls){
       const called=deck().find(c=>c.id===id);if(!called)continue;
-      const safeCall=called.r==='A'||(called.r==='K'&&k.playedIds.has('A'+called.s));
-      if(!safeCall)continue;
-      const feed=legal.filter(c=>c.s===called.s&&c.id!==id&&pts(c)>0&&c.id!=='3S').sort(pointsDesc);
-      if(feed.length)return feed[0].id;
+      const safeCall=called.r==='A'||(called.r==='K'&&k.playedIds.has('A'+called.s));if(!safeCall)continue;
+      const feed=legal.filter(c=>c.s===called.s&&c.id!==id&&pts(c)>0&&c.id!=='3S'&&!['A','K','Q','J'].includes(c.r));
+      if(feed.length)return disposableFeed(feed).id;
     }
   }
 
-  // 7) Leading 3S is allowed only when the bidder team has a reliable catcher; otherwise protect it.
+  // Never lead 3♠ merely because a teammate owns the top spade. Delivery must also be protected from trumping.
   if(!k.trick.length&&bidderTeam&&legal.some(c=>c.id==='3S')){
     const highest=highestOutstandingInSuit(k,'S');
-    const highestTeamGuaranteed=highest&&(g.calls.includes(highest.id)||k.hand.some(c=>c.id===highest.id));
-    // If our own highest card is the catcher, leading 3S cannot use it this trick, so require a called teammate catcher.
     const calledCatcher=highest&&g.calls.includes(highest.id)&&!k.hand.some(c=>c.id===highest.id);
-    if(calledCatcher){const trumpRisk=g.trump!=='NT'&&g.trump!=='S'&&k.trumpPlayed<deck().filter(c=>c.s===g.trump).length;const knownVoidSpadeOpponent=k.voids.some((v,j)=>j!==i&&!knownTeammate(g,k,i,j)&&v.has('S'));if(!trumpRisk&&!knownVoidSpadeOpponent)return '3S';}
-    // Otherwise leave 3S protected; e.g. A already gone and unknown K outstanding => do not lead it.
+    if(calledCatcher){
+      const trumpRisk=g.trump!=='NT'&&g.trump!=='S'&&k.trumpPlayed<deck().filter(c=>c.s===g.trump).length;
+      const knownVoidSpadeOpponent=k.voids.some((v,j)=>j!==i&&!knownTeammate(g,k,i,j)&&v.has('S'));
+      if(!trumpRisk&&!knownVoidSpadeOpponent)return '3S';
+    }
   }
 
-  // 8) A called A/K should reveal itself when it can secure meaningful points; don't burn it in a worthless trick unnecessarily.
-  if(bidderTeam&&winners.length&&trickPoints>0){
+  // Use a called A/K to reveal/secure partnership when points genuinely need saving, not just for revelation.
+  if(bidderTeam&&winners.length&&trickPoints>0&&!safePartnerWin){
     const calledWinner=winners.filter(c=>g.calls.includes(c.id)).sort((a,b)=>rankValue(a.r)-rankValue(b.r));
     if(calledWinner.length)return calledWinner[0].id;
   }
 
-  // 9) If useful points are exposed, take them with the cheapest sufficient winner.
-  if(winners.length&&(trickPoints>=10||k.trick.length===4))return winners.sort((a,b)=>rankValue(a.r)-rankValue(b.r)||pts(a)-pts(b))[0].id;
+  // Opponent or uncertain winner: capture meaningful exposed points with the cheapest sufficient winner.
+  if(winners.length&&!partnerWinning&&(trickPoints>=10||k.trick.length===4)){
+    return winners.slice().sort((a,b)=>rankValue(a.r)-rankValue(b.r)||controlRank(a)-controlRank(b))[0].id;
+  }
 
-  // 10) Preserve K while an unknown A of that suit is outstanding, and protect 3S until a safe delivery opportunity appears.
+  // Default conservation: protect 3♠, A/K, then Q/J when a cheap legal loser exists.
   const preserveK=c=>c.r==='K'&&!k.playedIds.has('A'+c.s)&&!k.hand.some(x=>x.id==='A'+c.s)&&!g.calls.includes('A'+c.s);
-  let pool=losers.length?losers.slice():legal.slice();const nonAK=pool.filter(c=>!['A','K'].includes(c.r));if(nonAK.length)pool=nonAK;const nonReserved=pool.filter(c=>!preserveK(c));if(nonReserved.length)pool=nonReserved;
+  let pool=losers.length?losers.slice():legal.slice();
   if(bidderTeam){const no3=pool.filter(c=>c.id!=='3S');if(no3.length)pool=no3;}
-  return pool.sort(pointsAsc)[0].id;
+  const low=pool.filter(c=>!['A','K','Q','J'].includes(c.r));if(low.length)pool=low;
+  const nonReserved=pool.filter(c=>!preserveK(c));if(nonReserved.length)pool=nonReserved;
+  return cheapest(pool).id;
 }
 function clearActionTimer(g){if(g.actionTimer){clearTimeout(g.actionTimer);g.actionTimer=null;}g.actionDeadline=null;}
 function armActionTimer(g){
