@@ -26,3 +26,7 @@
 
 .sound-btn{background:#dfe9e3;color:#173629;border-color:#789688;white-space:nowrap}
 .card.legal:hover{box-shadow:0 0 0 3px rgba(240,213,138,.45)}
+
+/* Cards already played on the table stay fully vibrant; only illegal cards in your hand are masked. */
+.card.display-card{opacity:1;filter:none;cursor:default;transform:none}
+.trick .card.display-card{box-shadow:0 2px 7px rgba(0,0,0,.28)}

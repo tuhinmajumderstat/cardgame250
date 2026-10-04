@@ -49,3 +49,7 @@ Bot decisions are rule-based rather than random. They consider hand strength whe
 
 ## Bot pacing
 Bots intentionally pause before bidding, choosing a contract, and playing cards so human players can follow the action. After the fifth card of each trick, all five cards remain visible for about 2.2 seconds before the trick is collected.
+
+
+## Bot v4 polish
+Bidding speech is intentionally brief: bids are announced as the number only (for example, ‘160’) and passes as ‘Pass’, preventing successive bot actions from cutting off long spoken sentences. Cards already played into the running trick are rendered at full brightness; only illegal cards remaining in the local player's hand are dimmed.
