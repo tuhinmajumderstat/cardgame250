@@ -32,3 +32,11 @@ During a deal, the public display shows only each player's individually captured
 
 ## v5
 Added **Show last hand** during play/results. In 250 terminology, this displays the complete previous five-card trick, with each card labelled by the player who played it. The panel can be shown or hidden and does not reveal any unplayed cards.
+
+
+## v8 addition — No Trump
+The winning bidder may choose **No Trump**. In a no-trump deal, no suit has trump status: players must still follow the led suit when possible, and the highest card of the led suit wins each trick.
+
+
+## v8 change
+During play, each player now gets a private role banner on their own screen: Bidder, Partner, Double Partner, or Opponent. This does not reveal an unrevealed partner to anyone else; public partner markers still appear only when called cards are played.
