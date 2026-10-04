@@ -24,7 +24,7 @@ function stay(g,i){if(g.phase!=='bidding'||g.bidTurn!==i||g.bidAction!=='respond
 function legalCards(g,i){if(g.phase!=='play'||g.turn!==i)return[];const h=g.players[i].hand;if(!g.trick.length)return h.map(c=>c.id);const suit=g.trick[0].card.s;const follow=h.filter(c=>c.s===suit);return (follow.length?follow:h).map(c=>c.id);}
 function trickWinner(g){const lead=g.trick[0].card.s;let candidates=g.trump==='NT'?[]:g.trick.filter(x=>x.card.s===g.trump);if(!candidates.length)candidates=g.trick.filter(x=>x.card.s===lead);return candidates.reduce((a,b)=>rankValue(a.card.r)>rankValue(b.card.r)?a:b).player;}
 function finishDeal(g){const bidderTeam=g.teams.map((t,i)=>t==='bidder'?i:null).filter(x=>x!==null);const opp=g.teams.map((t,i)=>t==='opponent'?i:null).filter(x=>x!==null);const bp=g.teamPoints[0], op=g.teamPoints[1], ok=bp>=g.bid; if(ok){for(const i of bidderTeam)g.players[i].score+=i===g.bidder?g.bid+50:g.bid;}else{g.players[g.bidder].score-=50;for(const i of opp)g.players[i].score+=op;}g.lastResult={text:ok?`Contract made: ${bp} ≥ ${g.bid}.`:`Contract failed: ${bp} < ${g.bid}. Opponents captured ${op}.`,bidderPoints:bp,opponentPoints:op,success:ok};g.phase='result';g.startBidder=next(g.startBidder);emit(g);}
-function play(g,i,id){if(g.resolvingTrick||!legalCards(g,i).includes(id))return;const p=g.players[i], k=p.hand.findIndex(c=>c.id===id), card=p.hand.splice(k,1)[0];if(g.calls.includes(id)){g.revealedCalls.add(id);if(i!==g.bidder)g.revealedPartners.add(i);}g.trick.push({player:i,card});g.playedCards.push({player:i,card});if(g.trick.length<5){g.turn=next(i);emit(g);scheduleBot(g);return;}g.resolvingTrick=true;g.turn=null;emit(g);setTimeout(()=>{if(!rooms.has(g.code)||g.phase!=='play'||g.trick.length!==5)return;const w=trickWinner(g), tp=g.trick.reduce((s,x)=>s+pts(x.card),0);g.players[w].dealPoints=(g.players[w].dealPoints||0)+tp;g.teamPoints[g.teams[w]==='bidder'?0:1]+=tp;g.leader=w;g.turn=w;g.lastTrick=g.trick;g.trick=[];g.resolvingTrick=false;if(g.players.every(p=>!p.hand.length))return finishDeal(g);emit(g);scheduleBot(g);},1400);}
+function play(g,i,id){if(g.resolvingTrick||!legalCards(g,i).includes(id))return;const p=g.players[i], k=p.hand.findIndex(c=>c.id===id), card=p.hand.splice(k,1)[0];if(g.calls.includes(id)){g.revealedCalls.add(id);if(i!==g.bidder)g.revealedPartners.add(i);}g.trick.push({player:i,card});g.playedCards.push({player:i,card});if(g.trick.length<5){g.turn=next(i);emit(g);scheduleBot(g);return;}g.resolvingTrick=true;g.turn=null;emit(g);setTimeout(()=>{if(!rooms.has(g.code)||g.phase!=='play'||g.trick.length!==5)return;const w=trickWinner(g), tp=g.trick.reduce((s,x)=>s+pts(x.card),0);g.players[w].dealPoints=(g.players[w].dealPoints||0)+tp;g.teamPoints[g.teams[w]==='bidder'?0:1]+=tp;g.leader=w;g.turn=w;g.lastTrick=g.trick;g.trick=[];g.resolvingTrick=false;if(g.players.every(p=>!p.hand.length))return finishDeal(g);emit(g);scheduleBot(g);},2200);}
 
 function handStrength(g,i){
   const h=g.players[i].hand; let best=-999, bestTrump='NT';
@@ -83,12 +83,16 @@ function scheduleBot(g){
   if(g.phase==='bidding'&&g.bidTurn!=null&&isBot(g,g.bidTurn)){i=g.bidTurn;action='bid';}
   else if(g.phase==='contract'&&isBot(g,g.bidder)){i=g.bidder;action='contract';}
   else if(g.phase==='play'&&!g.resolvingTrick&&g.turn!=null&&isBot(g,g.turn)){i=g.turn;action='play';}
-  if(!action)return;g.botTimer=setTimeout(()=>{g.botTimer=null;if(!rooms.has(g.code))return;
+  if(!action)return;
+  // Human-readable pacing: bots pause before acting so bids and cards can be followed.
+  const baseDelay=action==='contract'?1400:action==='bid'?950:1050;
+  const jitter=action==='contract'?350:300;
+  g.botTimer=setTimeout(()=>{g.botTimer=null;if(!rooms.has(g.code))return;
     if(action==='bid'&&g.phase==='bidding'&&g.bidTurn===i)botBid(g,i);
     else if(action==='contract'&&g.phase==='contract'&&g.bidder===i)botContract(g,i);
     else if(action==='play'&&g.phase==='play'&&!g.resolvingTrick&&g.turn===i){const id=chooseBotCard(g,i);if(id)play(g,i,id);}
     emit(g);scheduleBot(g);
-  },650+Math.floor(Math.random()*500));
+  },baseDelay+Math.floor(Math.random()*jitter));
 }
 
 function findRoom(socketId){return [...rooms.values()].find(r=>r.players.some(p=>p.id===socketId));}
