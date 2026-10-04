@@ -1,28 +1,34 @@
-# 250 — Multiplayer Card Game
-
-A five-player browser implementation of the 250 rules specified in chat.
+# 250 — five-player multiplayer card game
 
 ## Run locally
-1. Install Node.js 18+.
-2. In this folder run `npm install`.
-3. Run `npm start`.
-4. Open `http://localhost:3000` in five browser windows/devices.
-5. One player creates a room; the others join using the room code. The host starts when five players have joined.
+```bash
+npm install
+npm start
+```
+Open http://localhost:3000.
 
-## Implemented rules
-- 5 players, 50 cards: standard deck minus 2C and 2D; 10 cards/player.
-- Card rank: A K Q J 10 9 8 7 6 5 4 3 2.
-- Points: A/K/Q/J/10 = 10; any 5 = 5; 3S = 30; all others 0. Total = 250.
-- Anticlockwise play.
-- Bidding starts at 160 in multiples of 5 and uses sequential head-to-head incumbent/challenger battles. Challenger raises; incumbent may stay/match or pass. Pass is permanent. If all five pass, deal is abandoned and next deal starts with the next starting bidder.
-- Winning bidder calls two cards not in their hand and chooses a trump suit. Partner(s) are immediately public. If one player holds both calls, that player is the double partner.
-- First trick is led by the player to the bidder's left; winner leads subsequent tricks.
-- Must follow suit. If void, player may trump or discard anything. Trump may be led at any time.
-- Highest trump wins; otherwise highest card of led suit wins.
-- Contract succeeds when bidder team captures at least the bid.
-- Successful contract: bidder +bid+50; each partner +bid; opponents +0.
-- Failed contract: bidder -50; partner(s) +0; each opponent receives the opponent team's captured card points.
-- Cumulative scoreboard across deals.
+## Rules implemented
+- Five players; 50 cards (2♣ and 2♦ removed), 10 each.
+- Card points: A/K/Q/J/10 = 10, any 5 = 5, 3♠ = 30 (250 total).
+- Anticlockwise play; first trick begins with the player immediately after the bidder in play order; trick winner leads next.
+- Sequential head-to-head bidding from 160 in multiples of 5; incumbent may stay/match; pass is permanent.
+- Bidder calls two cards not in their hand and chooses trump.
+- Partner identities are hidden initially. A partner is publicly revealed only when that player plays a called card. If one player holds both called cards, the second call can reveal the double-partner situation naturally.
+- Must follow the led suit when possible; otherwise may trump or discard. Trump may be led at any time.
+- Highest trump wins; otherwise highest card of led suit.
+- Successful bidder team: partners get bid, bidder gets bid + 50; opponents 0. Failed contract: bidder -50, partners 0, opponents each receive opponent team's captured card points.
+- First bidder rotates each deal; all-pass deal is abandoned and rotation continues.
 
-## One configurable/assumed edge rule
-The supplied rules did not specify a maximum bid. This implementation allows bidding through 250, which is the total point value in the deck. Change `MAX_BID` in `server.js` if your house rule differs.
+## v3 UI/game changes
+- Bidding displays the two current competitors and marks passed players.
+- Leave Game button added. Leaving during a live deal cancels that deal and returns remaining players to the lobby.
+- Partner-card calling uses separate Suit and Card columns.
+- Hidden partnership fixed: server no longer sends unrevealed team identities to clients; partner role is exposed only after a called card is played (full roles shown at result).
+
+
+## v4 scoring visibility
+During a deal, the public display shows only each player's individually captured trick points. Bidder-team and opponent-team totals remain hidden until both called partner cards have actually been played. At that moment all team identities and team totals become public. Final scoring is unchanged.
+
+
+## v5
+Added **Show last hand** during play/results. In 250 terminology, this displays the complete previous five-card trick, with each card labelled by the player who played it. The panel can be shown or hidden and does not reveal any unplayed cards.
