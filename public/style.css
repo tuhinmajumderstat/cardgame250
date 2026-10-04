@@ -84,3 +84,6 @@ header{min-height:74px}h1{font-size:38px}header p{font-size:15px}
 #players .player{font-size:14px;line-height:1.25}
 #players .player>div:first-of-type{white-space:normal}
 @media(min-width:761px){.play-layout{grid-template-columns:minmax(520px,1fr) 310px}.hand-panel{align-self:start}}
+
+/* v8 rules/timer controls */
+.lobby-settings{display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:10px}.lobby-settings label{display:flex;flex-direction:column;gap:4px;font-weight:700}.lobby-settings select{min-width:170px}.countdown{display:inline-block;min-width:38px;padding:2px 7px;border-radius:8px;background:#e8f0e8;color:#173d25}.countdown.urgent{background:#ffe0df;color:#a11212;font-size:1.08em}

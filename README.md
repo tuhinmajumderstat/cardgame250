@@ -53,3 +53,10 @@ Bots intentionally pause before bidding, choosing a contract, and playing cards 
 
 ## Bot v4 polish
 Bidding speech is intentionally brief: bids are announced as the number only (for example, ‘160’) and passes as ‘Pass’, preventing successive bot actions from cutting off long spoken sentences. Cards already played into the running trick are rendered at full brightness; only illegal cards remaining in the local player's hand are dimmed.
+
+## v8 additions
+- Creator-selectable opening rule: Bidder's advantage, or forced 3♣ opening.
+- Optional play timer: Off / 60 / 90 / 120 seconds. Timeout uses the bot decision engine for that player's legal move.
+- Bidding always has a 60-second timeout; timeout means Pass.
+- Last 10 seconds are shown urgently and tick when sound is enabled.
+- Bot strategy tightened to preserve A/K on uncertain teammate tricks and to protect 3♠ from unsafe trump exposure.
