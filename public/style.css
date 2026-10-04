@@ -18,3 +18,8 @@
 .private-role.bidder{border-color:#d5ad45;background:#fff9e8}
 .private-role.partner,.private-role.double-partner{border-color:#75b98b;background:#effaf2}
 .private-role.opponent{border-color:#b8c4d6;background:#f6f7f9}
+/* High-contrast private role labels */
+.private-role.bidder b{color:#8a5a00}
+.private-role.partner b{color:#137333}
+.private-role.double-partner b{color:#075f2c}
+.private-role.opponent b{color:#b42318}
