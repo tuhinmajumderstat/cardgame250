@@ -40,3 +40,8 @@ The winning bidder may choose **No Trump**. In a no-trump deal, no suit has trum
 
 ## v8 change
 During play, each player now gets a private role banner on their own screen: Bidder, Partner, Double Partner, or Opponent. This does not reveal an unrevealed partner to anyone else; public partner markers still appear only when called cards are played.
+
+## Bot players
+The room creator can add bots in the lobby until the table has five seats. Any mix of humans and bots is supported (for example, 2 humans + 3 bots or 1 human + 4 bots). Bots participate in bidding, choose two called partner cards and a trump/No Trump contract when they win the bid, and play legal cards automatically.
+
+Bot decisions are rule-based rather than random. They consider hand strength when bidding, prefer strategically useful partner calls, protect valuable cards, try to feed points to known teammates, avoid unnecessarily trumping a known teammate's winning trick, and treat 3♠ as a special 30-point card. Bot decision code is deliberately given only that bot's own hand plus public play history; it does not inspect another player's or another bot's hidden hand when choosing a card.
