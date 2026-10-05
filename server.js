@@ -358,6 +358,14 @@ function scheduleBot(g){
   },baseDelay+Math.floor(Math.random()*jitter));
 }
 
+function restartMatch(g){
+  clearActionTimer(g);if(g.botTimer){clearTimeout(g.botTimer);g.botTimer=null;}
+  g.players.forEach(p=>{p.score=0;p.dealPoints=0;p.hand=[];});
+  g.dealNo=0;g.matchWinners=[];g.lastResult=null;g.startBidder=0;g.phase='lobby';
+  g.bid=null;g.incumbent=null;g.challenger=null;g.bidTurn=null;g.bidAction=null;g.passed=new Set();g.bidder=null;g.trump=null;g.reverse=false;g.calls=[];g.callHolders=[];g.teams=null;g.revealedPartners=new Set();g.revealedCalls=new Set();g.trick=[];g.lastTrick=[];g.leader=null;g.turn=null;g.teamPoints=[0,0];g.resolvingTrick=false;g.playedCards=[];g.firstLeadPending=false;g.actionDeadline=null;
+  // A restart keeps seats and room settings, then immediately deals a fresh match when all five seats remain filled.
+  if(g.players.length===5)return newDeal(g);emit(g);
+}
 function findRoom(socketId){return [...rooms.values()].find(r=>r.players.some(p=>p.id===socketId));}
 function connectedHumans(g){return g.players.filter(p=>!p.isBot&&p.connected!==false&&p.id);}
 function transferHost(g){const h=connectedHumans(g)[0];g.hostId=h?h.id:null;}
@@ -401,6 +409,7 @@ io.on('connection',s=>{
   s.on('contract',({calls,trump,reverse})=>{const g=findRoom(s.id);if(!g||g.phase!=='contract'||g.players[g.bidder].id!==s.id||g.players[g.bidder].autoMode||![...SUITS,'NT'].includes(trump)||!Array.isArray(calls)||calls.length!==2||calls[0]===calls[1])return;const own=new Set(g.players[g.bidder].hand.map(c=>c.id));if(calls.some(x=>own.has(x)||!deck().some(c=>c.id===x)))return;g.calls=calls;g.trump=trump;g.reverse=!!reverse;const holders=calls.map(id=>g.players.findIndex(p=>p.hand.some(c=>c.id===id)));g.callHolders=holders;const team=new Set([g.bidder,...holders]);g.teams=g.players.map((_,i)=>team.has(i)?'bidder':'opponent');g.revealedPartners=new Set();g.revealedCalls=new Set();beginPlayAfterContract(g);});
   s.on('play',id=>{const g=findRoom(s.id);if(g){const i=g.players.findIndex(p=>p.id===s.id);if(!g.players[i]?.autoMode)play(g,i,id);}});
   s.on('nextDeal',()=>{const g=findRoom(s.id);if(g&&g.phase==='result'&&g.hostId===s.id)newDeal(g);});
+  s.on('restartGame',()=>{const g=findRoom(s.id);if(g&&g.hostId===s.id&&g.phase!=='lobby')restartMatch(g);});
   s.on('endEarly',()=>{const g=findRoom(s.id);if(g&&g.hostId===s.id&&(g.matchTarget||0)===0&&outcomeDetermined(g)&&!g.resolvingTrick)finishDeal(g);});
   s.on('leave',()=>replaceHumanWithBot(s,true));
   s.on('disconnect',()=>{const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id),p=g.players[i];if(!p||p.isBot)return;p.connected=false;clearDisconnectGrace(p);p.disconnectTimer=setTimeout(()=>{if(!rooms.has(g.code)||p.connected!==false)return;makeSeatBot(g,i,true);},20000);emit(g);});

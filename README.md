@@ -25,3 +25,11 @@ npm start
 ```
 
 Open http://localhost:3000
+
+
+## v15 celebration / restart update
+- Host can restart a match at any time with confirmation; scores reset to zero while seats and room settings stay.
+- Deal winner is announced after each completed deal.
+- Target-score match winner gets a large animated celebration, final scoreboard, and spoken name.
+- Per-browser spoken-language selector: English (default) or Bengali; written UI stays English.
+- Bengali mode speaks bid numbers and winner phrases in Bengali; Pass, partner-card names, suits, No Trump, and Reverse remain English.
