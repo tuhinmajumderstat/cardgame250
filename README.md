@@ -33,3 +33,11 @@ Open http://localhost:3000
 - Target-score match winner gets a large animated celebration, final scoreboard, and spoken name.
 - Per-browser spoken-language selector: English (default) or Bengali; written UI stays English.
 - Bengali mode speaks bid numbers and winner phrases in Bengali; Pass, partner-card names, suits, No Trump, and Reverse remain English.
+
+## Bot strategy refinement
+- Reworked bot card-play priorities around legality first, public-information deductions, team control conservation, intelligent trump exhaustion, side-suit/ruff planning, and point feeding.
+- Strengthened 3♠ handling: early positional feeds, first-available team catcher, minimum sufficient control, and protection from known ruff danger without overreacting to unknown risk.
+- Bot bidders now follow the strategic convention that a called printed King implies the bidder owns that suit's Ace; bot bidders avoid calling a King without its Ace.
+- Trump drawing now stops when public void information shows opponents are out, preserving remaining bidder-team trump for later use.
+- Bots avoid wasting A/K controls, prefer cheaper sufficient winners such as Q/J when appropriate, and avoid casually cashing a King while its Ace is unresolved.
+- Lead selection uses known voids to avoid feeding opponent ruffs and to create useful ruff opportunities for known teammates.
