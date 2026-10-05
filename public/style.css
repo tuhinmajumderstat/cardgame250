@@ -90,3 +90,23 @@ header{min-height:74px}h1{font-size:38px}header p{font-size:15px}
 
 /* v10 landing help, match format, and temporary AI controls */
 .how-to{margin-top:24px;padding-top:18px;border-top:1px solid rgba(255,255,255,.14)}.how-to h2{margin:0 0 12px}.how-to details{margin:8px 0;padding:9px 12px;border-radius:10px;background:rgba(255,255,255,.055)}.how-to summary{cursor:pointer;font-weight:800}.how-to p{margin:8px 0 2px;line-height:1.45}.new-player-note{margin-top:14px!important}.auto-btn{background:#e9e1c7;color:#3f3214;border-color:#9f8a50;white-space:nowrap}.match-over{font-weight:800;font-size:1.08rem}.lobby-settings label{min-width:160px}
+
+
+/* v12 mobile/touch reliability */
+button,input,select,.card{touch-action:manipulation;-webkit-tap-highlight-color:rgba(240,213,138,.22)}
+.hand-panel,#controls{position:relative;z-index:20}
+.hand .card.legal{pointer-events:auto;user-select:none;-webkit-user-select:none}
+#lastTrick{pointer-events:none}
+.replace-panel{margin-top:12px;padding:12px;border:1px solid #8aa795;border-radius:10px;background:rgba(255,255,255,.06)}
+.replace-list{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:760px){
+  body{overflow-x:hidden}main{width:100%;max-width:100%;padding:8px}
+  header{align-items:flex-start}.header-actions{width:100%;justify-content:flex-start}
+  .play-layout{display:flex;flex-direction:column;gap:8px}
+  #table{width:100%;min-height:350px;border-width:6px}
+  #controls.panel{position:relative;z-index:30;overflow:visible}
+  #controls button,#controls input,#controls select{min-height:46px;margin:3px 2px}
+  .hand{grid-template-columns:repeat(5,minmax(0,1fr));width:100%}
+  .hand .card{min-height:72px;width:100%;padding:4px}
+  .lobby-settings select{min-width:0;width:100%}
+}

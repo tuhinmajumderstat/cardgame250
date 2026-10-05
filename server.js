@@ -11,7 +11,7 @@ const isBot=(g,i)=>!!g.players[i]&&(!!g.players[i].isBot||!!g.players[i].autoMod
 const botId=()=>`bot:${Math.random().toString(36).slice(2,10)}`;
 function roomCode(){let x;do{x=Math.random().toString(36).slice(2,6).toUpperCase()}while(rooms.has(x));return x;}
 function outcomeDetermined(g){if(g.phase!=='play'||!g.teams||(g.revealedCalls?.size||0)<2)return false;return g.teamPoints[0]>=g.bid||g.teamPoints[1]>250-g.bid;}
-function publicState(g,viewer){const me=g.players.findIndex(p=>p.id===viewer);const revealed=g.revealedPartners||new Set();const allPartnersRevealed=(g.revealedCalls?.size||0)>=2;const isHost=g.hostId===viewer;let privateRole=null;if(me>=0&&g.teams&&['play','result','matchEnd'].includes(g.phase)){if(me===g.bidder)privateRole='bidder';else{const partnerCallCount=(g.callHolders||[]).filter(i=>i===me).length;if(g.teams[me]==='bidder')privateRole=partnerCallCount===2?'double-partner':'partner';else privateRole='opponent';}}return {code:g.code,phase:g.phase,players:g.players.map((p,i)=>({name:p.name,seat:i,score:p.score,dealPoints:p.dealPoints||0,handCount:p.hand.length,isBot:!!p.isBot,autoMode:!!p.autoMode,passed:g.passed?.has(i)||false,role:(['result','matchEnd'].includes(g.phase)||i===g.bidder||revealed.has(i)||allPartnersRevealed)?(g.teams?g.teams[i]:null):null})),me,startBidder:g.startBidder,bid:g.bid,incumbent:g.incumbent,challenger:g.challenger,bidTurn:g.bidTurn,bidAction:g.bidAction,bidder:g.bidder,trump:g.trump,calls:g.calls,leader:g.leader,turn:g.turn,trick:g.trick,lastTrick:g.lastTrick||[],teamPoints:(allPartnersRevealed||['result','matchEnd'].includes(g.phase))?g.teamPoints:null,allPartnersRevealed,dealNo:g.dealNo,lastResult:g.lastResult,matchWinners:g.matchWinners||[],hand:me>=0?g.players[me].hand:[],legal:me>=0&&!g.players[me].autoMode?legalCards(g,me):[],isHost,autoMode:me>=0?!!g.players[me].autoMode:false,canStart:g.phase==='lobby'&&g.players.length===5&&isHost,canAddBot:g.phase==='lobby'&&g.players.length<5&&isHost,canNext:g.phase==='result'&&isHost,canEndEarly:(g.matchTarget||0)===0&&outcomeDetermined(g)&&isHost,resolvingTrick:!!g.resolvingTrick,privateRole,openingRule:g.openingRule||'bidder',playTimer:g.playTimer||0,matchTarget:g.matchTarget||0,actionDeadline:g.actionDeadline||null};}
+function publicState(g,viewer){const me=g.players.findIndex(p=>p.id===viewer);const revealed=g.revealedPartners||new Set();const allPartnersRevealed=(g.revealedCalls?.size||0)>=2;const isHost=g.hostId===viewer;let privateRole=null;if(me>=0&&g.teams&&['play','result','matchEnd'].includes(g.phase)){if(me===g.bidder)privateRole='bidder';else{const partnerCallCount=(g.callHolders||[]).filter(i=>i===me).length;if(g.teams[me]==='bidder')privateRole=partnerCallCount===2?'double-partner':'partner';else privateRole='opponent';}}return {code:g.code,phase:g.phase,players:g.players.map((p,i)=>({name:p.name,seat:i,score:p.score,dealPoints:p.dealPoints||0,handCount:p.hand.length,isBot:!!p.isBot,autoMode:!!p.autoMode,connected:p.connected!==false,passed:g.passed?.has(i)||false,role:(['result','matchEnd'].includes(g.phase)||i===g.bidder||revealed.has(i)||allPartnersRevealed)?(g.teams?g.teams[i]:null):null})),me,startBidder:g.startBidder,bid:g.bid,incumbent:g.incumbent,challenger:g.challenger,bidTurn:g.bidTurn,bidAction:g.bidAction,bidder:g.bidder,trump:g.trump,calls:g.calls,leader:g.leader,turn:g.turn,trick:g.trick,lastTrick:g.lastTrick||[],teamPoints:(allPartnersRevealed||['result','matchEnd'].includes(g.phase))?g.teamPoints:null,allPartnersRevealed,dealNo:g.dealNo,lastResult:g.lastResult,matchWinners:g.matchWinners||[],hand:me>=0?g.players[me].hand:[],legal:me>=0&&!g.players[me].autoMode?legalCards(g,me):[],isHost,autoMode:me>=0?!!g.players[me].autoMode:false,canStart:g.phase==='lobby'&&g.players.length===5&&isHost,canAddBot:g.phase==='lobby'&&g.players.length<5&&isHost,canNext:g.phase==='result'&&isHost,canEndEarly:(g.matchTarget||0)===0&&outcomeDetermined(g)&&isHost,resolvingTrick:!!g.resolvingTrick,privateRole,openingRule:g.openingRule||'bidder',playTimer:g.playTimer||0,matchTarget:g.matchTarget||0,actionDeadline:g.actionDeadline||null};}
 function emit(g){for(const p of g.players)if(!p.isBot)io.to(p.id).emit('state',publicState(g,p.id));}
 function newDeal(g){g.dealNo++; const d=shuffle(deck());g.players.forEach((p,i)=>{p.dealPoints=0;p.hand=d.slice(i*10,i*10+10).sort((a,b)=>SUITS.indexOf(a.s)-SUITS.indexOf(b.s)||RANKS.indexOf(a.r)-RANKS.indexOf(b.r));});g.phase='bidding';g.bid=null;g.incumbent=null;g.challenger=null;g.bidTurn=g.startBidder;g.bidAction='open';g.passed=new Set();g.bidder=null;g.trump=null;g.calls=[];g.callHolders=[];g.teams=null;g.revealedPartners=new Set();g.revealedCalls=new Set();g.trick=[];g.lastTrick=[];g.leader=null;g.turn=null;g.teamPoints=[0,0];g.lastResult=null;g.resolvingTrick=false;g.playedCards=[];g.firstLeadPending=false;emit(g);armActionTimer(g);scheduleBot(g);}
 function advanceOpening(g,idx){g.passed.add(idx);let j=next(idx);while(g.passed.has(j)&&j!==idx)j=next(j);if(g.passed.size===5){g.lastResult={text:'All five players passed. Deal abandoned.'};g.startBidder=next(g.startBidder);return newDeal(g);}g.bidTurn=j;g.bidAction='open';}
@@ -157,13 +157,52 @@ function chooseBotCard(g,i){
   if(!k.trick.length&&bidderTeam&&g.trump!=='NT'){
     const myTrumps=legal.filter(c=>c.s===g.trump), totalTrump=deck().filter(c=>c.s===g.trump).length;
     const outsideTrump=Math.max(0,totalTrump-k.trumpPlayed-myTrumps.length);
-    if(myTrumps.length&&outsideTrump>0){
+    // Once partnerships are public, stop stripping trump if every opponent is already known void in trump.
+    const identitiesPublic=(g.revealedCalls?.size||0)>=2;
+    const knownOpponents=identitiesPublic?g.players.map((_,j)=>j).filter(j=>g.teams?.[j]!==k.myTeam):[];
+    const opponentsKnownOut=knownOpponents.length>0&&knownOpponents.every(j=>k.voids[j].has(g.trump));
+    if(myTrumps.length&&outsideTrump>0&&!opponentsKnownOut){
       const calledOutstanding=new Set(g.calls.filter(id=>id.endsWith(g.trump)&&!k.playedIds.has(id)));
       const sorted=myTrumps.slice().sort((a,b)=>rankValue(b.r)-rankValue(a.r)), top=sorted[0];
       const higher=deck().filter(c=>c.s===g.trump&&rankValue(c.r)>rankValue(top.r)&&!k.playedIds.has(c.id));
       if(!higher.length||higher.every(c=>calledOutstanding.has(c.id)))return top.id;
       const expendable=myTrumps.filter(c=>!['A','K'].includes(c.r)&&c.id!=='3S');
       return (expendable.length?expendable:myTrumps).slice().sort(rankAsc)[0].id;
+    }
+  }
+
+  // Once there is no reason to keep drawing trump, establish side suits or deliberately create a useful void.
+  if(!k.trick.length&&bidderTeam){
+    const nonTrump=legal.filter(c=>g.trump==='NT'||c.s!==g.trump).filter(c=>c.id!=='3S');
+    const sureSideWinners=nonTrump.filter(c=>{
+      const higher=deck().filter(x=>x.s===c.s&&rankValue(x.r)>rankValue(c.r)&&!k.playedIds.has(x.id)&&!k.hand.some(h=>h.id===x.id));
+      return higher.length===0;
+    });
+    if(sureSideWinners.length)return sureSideWinners.slice().sort((a,b)=>pts(b)-pts(a)||rankValue(b.r)-rankValue(a.r))[0].id;
+    const suitCounts=Object.fromEntries(SUITS.map(s=>[s,k.hand.filter(c=>c.s===s).length]));
+    const singleton=nonTrump.filter(c=>suitCounts[c.s]===1&&pts(c)===0&&!['A','K','Q','J'].includes(c.r));
+    if(singleton.length)return singleton.slice().sort(rankAsc)[0].id;
+  }
+
+  // 3♠ may be passed forward to a known team catcher who acts later, but only if the route is not exposed to a known ruff.
+  if(bidderTeam&&k.trick.length&&legal.some(c=>c.id==='3S')){
+    const three=legal.find(c=>c.id==='3S');
+    const lead=g.trick[0].card.s;
+    if(lead==='S'&&!wouldWin(three)){
+      const playedSeats=new Set(g.trick.map(x=>x.player));
+      const future=[];let seat=next(i);while(seat!==g.leader){if(!playedSeats.has(seat))future.push(seat);seat=next(seat);}
+      const outstanding=deck().filter(c=>c.s==='S'&&!k.playedIds.has(c.id)&&!k.hand.some(h=>h.id===c.id));
+      outstanding.sort((a,b)=>rankValue(b.r)-rankValue(a.r));
+      const top=outstanding[0];
+      if(top&&g.calls.includes(top.id)){
+        const catcher=g.callHolders?.[g.calls.indexOf(top.id)];
+        const pos=future.indexOf(catcher);
+        if(pos>=0){
+          const before=future.slice(0,pos);
+          const knownRuff=before.some(j=>g.trump!=='NT'&&g.trump!=='S'&&k.voids[j].has('S')&&!k.voids[j].has(g.trump));
+          if(!knownRuff)return three.id;
+        }
+      }
     }
   }
 
@@ -212,12 +251,14 @@ function clearActionTimer(g){if(g.actionTimer){clearTimeout(g.actionTimer);g.act
 function armActionTimer(g){
   clearActionTimer(g);if(!rooms.has(g.code))return;
   let seconds=0,kind=null,seat=null;
-  if(g.phase==='bidding'&&g.bidTurn!=null){seconds=60;kind='bid';seat=g.bidTurn;}
-  else if(g.phase==='play'&&!g.resolvingTrick&&g.turn!=null&&g.playTimer>0){seconds=g.playTimer;kind='play';seat=g.turn;}
-  if(!seconds)return;
+  if(g.phase==='bidding'&&g.bidTurn!=null&&!isBot(g,g.bidTurn)){seconds=60;kind='bid';seat=g.bidTurn;}
+  else if(g.phase==='play'&&!g.resolvingTrick&&g.turn!=null&&g.playTimer>0&&!isBot(g,g.turn)){seconds=g.playTimer;kind='play';seat=g.turn;}
+  if(!seconds){emit(g);return;}
   g.actionDeadline=Date.now()+seconds*1000;const token=`${kind}:${seat}:${g.actionDeadline}`;g.actionTimerToken=token;
+  // Emit after the deadline exists. This fixes clients intermittently receiving a turn before its timer was armed.
+  emit(g);
   g.actionTimer=setTimeout(()=>{g.actionTimer=null;g.actionDeadline=null;if(!rooms.has(g.code)||g.actionTimerToken!==token)return;
-    if(kind==='bid'&&g.phase==='bidding'&&g.bidTurn===seat){handlePass(g,seat);emit(g);armActionTimer(g);scheduleBot(g);}
+    if(kind==='bid'&&g.phase==='bidding'&&g.bidTurn===seat){handlePass(g,seat);armActionTimer(g);scheduleBot(g);}
     else if(kind==='play'&&g.phase==='play'&&!g.resolvingTrick&&g.turn===seat){const id=chooseBotCard(g,seat);if(id)play(g,seat,id);}
   },seconds*1000);
 }
@@ -239,12 +280,38 @@ function scheduleBot(g){
 }
 
 function findRoom(socketId){return [...rooms.values()].find(r=>r.players.some(p=>p.id===socketId));}
-function transferHost(g){const h=g.players.find(p=>!p.isBot&&p.id&&!String(p.id).startsWith('bot:'));g.hostId=h?h.id:null;}
-function replaceHumanWithBot(s,notify=true){const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id);if(i<0)return;const wasHost=g.hostId===s.id;const p=g.players[i];p.id=botId();p.isBot=true;p.autoMode=false;p.name=p.name.replace(/\s*\(Bot\)$/,'')+' (Bot)';if(notify){s.leave(g.code);s.emit('leftGame');}if(wasHost)transferHost(g);if(!g.players.some(x=>!x.isBot)){clearActionTimer(g);if(g.botTimer)clearTimeout(g.botTimer);rooms.delete(g.code);return;}emit(g);armActionTimer(g);scheduleBot(g);}
+function connectedHumans(g){return g.players.filter(p=>!p.isBot&&p.connected!==false&&p.id);}
+function transferHost(g){const h=connectedHumans(g)[0];g.hostId=h?h.id:null;}
+function clearDisconnectGrace(p){if(p.disconnectTimer){clearTimeout(p.disconnectTimer);p.disconnectTimer=null;}}
+function makeSeatBot(g,i,nameSuffix=true){
+  const p=g.players[i];if(!p)return;clearDisconnectGrace(p);const oldId=p.id;
+  p.id=botId();p.isBot=true;p.autoMode=false;p.connected=true;p.reconnectToken=null;
+  if(nameSuffix&&!/\(Bot\)$/.test(p.name))p.name=p.name+' (Bot)';
+  if(g.hostId===oldId)transferHost(g);
+  if(!connectedHumans(g).length){clearActionTimer(g);if(g.botTimer)clearTimeout(g.botTimer);rooms.delete(g.code);return;}
+  emit(g);armActionTimer(g);scheduleBot(g);
+}
+function replaceHumanWithBot(s,notify=true){const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id);if(i<0)return;if(notify){s.leave(g.code);s.emit('leftGame');}makeSeatBot(g,i,true);}
+function restoreDisconnectedSeat(g,s,token){
+  const i=g.players.findIndex(p=>!p.isBot&&p.connected===false&&p.reconnectToken===token);if(i<0)return false;
+  const p=g.players[i];clearDisconnectGrace(p);const old=p.id;p.id=s.id;p.connected=true;p.autoMode=false;s.join(g.code);if(g.hostId===old||!g.hostId)g.hostId=s.id;emit(g);armActionTimer(g);scheduleBot(g);return true;
+}
+function replaceableBotSeats(g){return g.players.map((p,i)=>p.isBot?{seat:i,name:p.name,score:p.score}:null).filter(Boolean);}
+function joinIntoBotSeat(g,s,name,seat,token){
+  seat=Number(seat);const p=g.players[seat];if(!p||!p.isBot)return false;
+  p.id=s.id;p.name=String(name||`Player ${seat+1}`).slice(0,20);p.isBot=false;p.autoMode=false;p.connected=true;p.reconnectToken=token||null;s.join(g.code);if(!g.hostId)g.hostId=s.id;emit(g);armActionTimer(g);scheduleBot(g);return true;
+}
 io.on('connection',s=>{
-  s.on('create',name=>{const code=roomCode(),g={code,hostId:s.id,players:[{id:s.id,name:String(name||'Player 1').slice(0,20),score:0,hand:[],isBot:false,autoMode:false}],phase:'lobby',startBidder:0,dealNo:0,openingRule:'bidder',playTimer:0,matchTarget:0,matchWinners:[],actionDeadline:null};rooms.set(code,g);s.join(code);emit(g);});
-  s.on('join',({code,name})=>{const g=rooms.get(String(code).toUpperCase());if(!g||g.phase!=='lobby'||g.players.length>=5)return s.emit('errorMsg','Room unavailable.');g.players.push({id:s.id,name:String(name||`Player ${g.players.length+1}`).slice(0,20),score:0,hand:[],isBot:false,autoMode:false});s.join(g.code);emit(g);});
-  s.on('addBot',()=>{const g=findRoom(s.id);if(!g||g.hostId!==s.id||g.phase!=='lobby'||g.players.length>=5)return;let n=1;const names=new Set(g.players.map(p=>p.name));while(names.has(`Bot ${n}`))n++;g.players.push({id:botId(),name:`Bot ${n}`,score:0,hand:[],isBot:true,autoMode:false});emit(g);});
+  s.on('create',payload=>{const data=typeof payload==='object'&&payload?payload:{name:payload};const name=data.name,token=data.token;const code=roomCode(),g={code,hostId:s.id,players:[{id:s.id,name:String(name||'Player 1').slice(0,20),score:0,hand:[],isBot:false,autoMode:false,connected:true,reconnectToken:token||null}],phase:'lobby',startBidder:0,dealNo:0,openingRule:'bidder',playTimer:0,matchTarget:0,matchWinners:[],actionDeadline:null};rooms.set(code,g);s.join(code);emit(g);});
+  s.on('join',({code,name,seat,token}={})=>{const g=rooms.get(String(code||'').toUpperCase());if(!g)return s.emit('errorMsg','Room unavailable.');
+    if(token&&restoreDisconnectedSeat(g,s,token))return;
+    if(g.phase==='lobby'&&g.players.length<5){g.players.push({id:s.id,name:String(name||`Player ${g.players.length+1}`).slice(0,20),score:0,hand:[],isBot:false,autoMode:false,connected:true,reconnectToken:token||null});s.join(g.code);return emit(g);}
+    const bots=replaceableBotSeats(g);if(!bots.length)return s.emit('errorMsg','Room is full — all five seats belong to humans.');
+    if(seat!==undefined&&seat!==null){if(!joinIntoBotSeat(g,s,name,seat,token))s.emit('errorMsg','That bot seat is no longer available.');return;}
+    if(bots.length===1)return joinIntoBotSeat(g,s,name,bots[0].seat,token);
+    s.emit('replaceOptions',{code:g.code,options:bots});
+  });
+  s.on('addBot',()=>{const g=findRoom(s.id);if(!g||g.hostId!==s.id||g.phase!=='lobby'||g.players.length>=5)return;let n=1;const names=new Set(g.players.map(p=>p.name));while(names.has(`Bot ${n}`))n++;g.players.push({id:botId(),name:`Bot ${n}`,score:0,hand:[],isBot:true,autoMode:false,connected:true});emit(g);});
   s.on('settings',({openingRule,playTimer,matchTarget})=>{const g=findRoom(s.id);if(!g||g.hostId!==s.id||g.phase!=='lobby')return;if(['bidder','3C'].includes(openingRule))g.openingRule=openingRule;const t=Number(playTimer);if([0,60,90,120].includes(t))g.playTimer=t;const mt=Number(matchTarget);if([0,500,1000,1500,2000].includes(mt))g.matchTarget=mt;emit(g);});
   s.on('autoMode',enabled=>{const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id);if(i<0||g.players[i].isBot)return;g.players[i].autoMode=!!enabled;emit(g);if(g.players[i].autoMode){clearActionTimer(g);scheduleBot(g);}else{armActionTimer(g);}});
   s.on('start',()=>{const g=findRoom(s.id);if(g&&g.hostId===s.id&&g.players.length===5)newDeal(g);});
@@ -256,6 +323,6 @@ io.on('connection',s=>{
   s.on('nextDeal',()=>{const g=findRoom(s.id);if(g&&g.phase==='result'&&g.hostId===s.id)newDeal(g);});
   s.on('endEarly',()=>{const g=findRoom(s.id);if(g&&g.hostId===s.id&&(g.matchTarget||0)===0&&outcomeDetermined(g)&&!g.resolvingTrick)finishDeal(g);});
   s.on('leave',()=>replaceHumanWithBot(s,true));
-  s.on('disconnect',()=>replaceHumanWithBot(s,false));
+  s.on('disconnect',()=>{const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id),p=g.players[i];if(!p||p.isBot)return;p.connected=false;clearDisconnectGrace(p);p.disconnectTimer=setTimeout(()=>{if(!rooms.has(g.code)||p.connected!==false)return;makeSeatBot(g,i,true);},20000);emit(g);});
 });
 server.listen(PORT,()=>console.log(`250 running on port ${PORT}`));

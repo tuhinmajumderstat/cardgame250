@@ -67,3 +67,15 @@ Bidding speech is intentionally brief: bids are announced as the number only (fo
 - When a challenger raises, the incumbent may Stay at that bid, Raise directly to a higher legal bid, or Pass.
 - If the incumbent raises directly, the same challenger retains priority and must Raise above the new bid or Pass.
 - The winner of each head-to-head duel remains incumbent against the next unpassed player.
+
+
+## v12 changes
+- Mobile/touch compatibility pass for bidding and card play.
+- Human-turn timer is armed before the state is broadcast, fixing intermittent missing countdowns.
+- Unexpected disconnects get a 20-second reconnection grace period; explicit Leave remains immediate.
+- Humans may join a full room by replacing an ordinary bot or a bot that replaced a departed player. Watch-as-bot seats remain human-owned and cannot be replaced.
+- Host migrates after a departed host becomes a bot.
+- Bidder-team bots stop drawing trump once all publicly identified opponents are known void in trump, and can establish side suits/create useful voids.
+- Refined 3-spade passing: a bot may pass 3S forward to a known team top-spade catcher, but avoids it when a player before the catcher is known void in spades and may ruff.
+- How-to-play now states natural rank order and the trump winner rule explicitly.
+- Shuffle/deal code is unchanged from v11.
