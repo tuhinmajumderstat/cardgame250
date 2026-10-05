@@ -69,7 +69,7 @@ Bidding speech is intentionally brief: bids are announced as the number only (fo
 - The winner of each head-to-head duel remains incumbent against the next unpassed player.
 
 
-## v12 changes
+## v13 changes
 - Mobile/touch compatibility pass for bidding and card play.
 - Human-turn timer is armed before the state is broadcast, fixing intermittent missing countdowns.
 - Unexpected disconnects get a 20-second reconnection grace period; explicit Leave remains immediate.
@@ -79,3 +79,12 @@ Bidding speech is intentionally brief: bids are announced as the number only (fo
 - Refined 3-spade passing: a bot may pass 3S forward to a known team top-spade catcher, but avoids it when a player before the catcher is known void in spades and may ruff.
 - How-to-play now states natural rank order and the trump winner rule explicitly.
 - Shuffle/deal code is unchanged from v11.
+
+
+## v13 bidding / partner-call refinement
+- Bot bidding was recalibrated so a normal completed auction is centered closer to ~190; 200+ is reserved more often for strong hands.
+- Small bidding variation remains so bots are not deterministic.
+- Partner calls now compare 3♠ against Aces and other control cards instead of over-prioritizing 3♠.
+- If the bidder has strong cards underneath a missing trump Ace, calling that trump Ace gets very high priority.
+- Humans can replace genuine bot-owned seats even when the five-seat lobby is already full before the game starts. Watch-as-bot seats remain protected.
+- Shuffle/deal logic is unchanged.

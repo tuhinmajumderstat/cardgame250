@@ -35,7 +35,12 @@ function handStrength(g,i){
     if(h.some(c=>c.id==='3S')&&h.some(c=>['AS','KS'].includes(c.id)))v+=7;
     if(v>best){best=v;bestTrump=tr;}
   }
-  const ceiling=Math.max(155,Math.min(225,155+5*Math.floor(best/7)));
+  // Calibrated so a five-player auction usually finishes around 190.
+  // 200+ should normally require a genuinely strong hand, while exceptional hands can still go much higher.
+  let ceiling=Math.max(155,Math.min(230,150+5*Math.floor(best/7)));
+  // Small human-like variation, but never enough to turn a weak hand into a reckless one.
+  const jitter=Math.random()<0.22?(Math.random()<0.5?-5:5):0;
+  ceiling=Math.max(155,Math.min(230,ceiling+jitter));
   return {ceiling,bestTrump};
 }
 function botBid(g,i){const {ceiling}=handStrength(g,i);if(g.bidAction==='open'){if(ceiling>=160)handleBid(g,i,160);else handlePass(g,i);return;}if(g.bidAction==='raise'){const min=g.bid+5;if(min>ceiling)handlePass(g,i);else{let jump=min;if(ceiling-min>=20&&Math.random()<.35)jump=Math.min(ceiling,min+10);handleBid(g,i,jump);}return;}if(g.bidAction==='respond'){if(g.bid<=ceiling)stay(g,i);else handlePass(g,i);}}
@@ -51,7 +56,28 @@ function botContract(g,i){
   const h=g.players[i].hand, own=new Set(h.map(c=>c.id)), {bestTrump}=handStrength(g,i);let trump=bestTrump;
   const available=deck().filter(c=>!own.has(c.id));
   const suitCount=s=>h.filter(c=>c.s===s).length, has=id=>own.has(id);
-  const score=c=>{let v=0;if(c.r==='A')v+=100;else if(c.r==='K')v+=65;else if(c.r==='Q')v+=35;else if(c.r==='J')v+=22;else if(c.r==='10')v+=18;if(c.s===trump)v+=18;if(c.id==='3S'&&(has('AS')||has('KS')))v+=120;if(c.r==='A'&&suitCount(c.s)>=2)v+=12;return v;};
+  const highTrumpCount=trump==='NT'?0:h.filter(c=>c.s===trump&&['K','Q','J','10'].includes(c.r)).length;
+  const score=c=>{
+    let v=0;
+    // Aces are broad control cards and should compete strongly with the valuable 3♠ call.
+    if(c.r==='A')v=100;
+    else if(c.r==='K')v=58;
+    else if(c.r==='Q')v=32;
+    else if(c.r==='J')v=20;
+    else if(c.r==='10')v=15;
+    // Missing trump Ace is especially important when our trump strength sits underneath it.
+    if(trump!=='NT'&&c.r==='A'&&c.s===trump){v+=30;if(highTrumpCount>=2)v+=45;}
+    // 3♠ is worth 30 points, but it is not an automatic partner call. If we already own
+    // A♠/K♠ we have a realistic chance to capture it naturally, so other Aces gain value.
+    if(c.id==='3S'){v+=82;if(has('AS'))v-=32;else if(has('KS'))v-=18;if(trump==='S'&&has('AS'))v-=10;}
+    // Calling an Ace in a suit where we already have length/control is useful for establishing that suit.
+    if(c.r==='A'&&suitCount(c.s)>=2)v+=10;
+    // If we own the Ace, a missing King can occasionally be a sensible second call.
+    if(c.r==='K'&&has('A'+c.s))v+=18;
+    // Mild variation among strategically similar calls keeps bots from becoming deterministic.
+    v+=(Math.random()-.5)*10;
+    return v;
+  };
   const calls=available.sort((a,b)=>score(b)-score(a)).slice(0,2).map(c=>c.id);
   g.calls=calls;g.trump=trump;const holders=calls.map(id=>g.players.findIndex(p=>p.hand.some(c=>c.id===id)));g.callHolders=holders;const team=new Set([g.bidder,...holders]);g.teams=g.players.map((_,j)=>team.has(j)?'bidder':'opponent');g.revealedPartners=new Set();g.revealedCalls=new Set();beginPlayAfterContract(g);
 }
@@ -308,7 +334,8 @@ io.on('connection',s=>{
     if(g.phase==='lobby'&&g.players.length<5){g.players.push({id:s.id,name:String(name||`Player ${g.players.length+1}`).slice(0,20),score:0,hand:[],isBot:false,autoMode:false,connected:true,reconnectToken:token||null});s.join(g.code);return emit(g);}
     const bots=replaceableBotSeats(g);if(!bots.length)return s.emit('errorMsg','Room is full — all five seats belong to humans.');
     if(seat!==undefined&&seat!==null){if(!joinIntoBotSeat(g,s,name,seat,token))s.emit('errorMsg','That bot seat is no longer available.');return;}
-    if(bots.length===1)return joinIntoBotSeat(g,s,name,bots[0].seat,token);
+    // A full room may still accept a human whenever at least one genuinely bot-owned seat exists,
+    // including in the pre-game lobby. Watch-as-bot seats remain human-owned and never appear here.
     s.emit('replaceOptions',{code:g.code,options:bots});
   });
   s.on('addBot',()=>{const g=findRoom(s.id);if(!g||g.hostId!==s.id||g.phase!=='lobby'||g.players.length>=5)return;let n=1;const names=new Set(g.players.map(p=>p.name));while(names.has(`Bot ${n}`))n++;g.players.push({id:botId(),name:`Bot ${n}`,score:0,hand:[],isBot:true,autoMode:false,connected:true});emit(g);});
