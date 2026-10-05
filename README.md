@@ -1,90 +1,27 @@
-# 250 — five-player multiplayer card game
+# 250 — v14 Reverse
+
+Built from the v13 bid-strategy version.
+
+## v14 changes
+
+- Added **Reverse** as a contract option, defaulting to **No**.
+- Suit + Reverse: only the trump suit is reversed.
+  - Spades/Hearts: 2 > 3 > 4 > ... > K > A.
+  - Diamonds/Clubs: 3 > 4 > 5 > ... > K > A (2♦ and 2♣ are not in the deck).
+- No Trump + Reverse: all four suits use reverse ordering; there is still no trump suit.
+- Card point values are unchanged in every contract.
+- Bot contract evaluation understands Reverse but is deliberately conservative about choosing it.
+- Reverse No Trump has a much stronger rarity penalty and is intended only for exceptional low-card strength spread across several suits.
+- Reverse partner calling strongly values the top effective control: 2♠/2♥ or 3♦/3♣ as appropriate.
+- Once a human declares Reverse, bots use the effective Reverse ordering for trick play, control preservation, trump drawing, outstanding-card reasoning and partner cooperation.
+- Normal strategy is preserved as the baseline; Reverse adjustments apply only to affected suits/contracts.
+- Fixed/generalized the exposed **3♠** tactical rule: bots recognize the 30 points regardless of who played 3♠ and capture it when their side does not already have a guaranteed winner. In Reverse, this uses effective card strength (e.g. A♠ cannot catch 3♠ in ♠ Reverse).
 
 ## Run locally
+
 ```bash
 npm install
 npm start
 ```
-Open http://localhost:3000.
 
-## Rules implemented
-- Five players; 50 cards (2♣ and 2♦ removed), 10 each.
-- Card points: A/K/Q/J/10 = 10, any 5 = 5, 3♠ = 30 (250 total).
-- Anticlockwise play; first trick begins with the player immediately after the bidder in play order; trick winner leads next.
-- Sequential head-to-head bidding from 160 in multiples of 5; incumbent may stay/match; pass is permanent.
-- Bidder calls two cards not in their hand and chooses trump.
-- Partner identities are hidden initially. A partner is publicly revealed only when that player plays a called card. If one player holds both called cards, the second call can reveal the double-partner situation naturally.
-- Must follow the led suit when possible; otherwise may trump or discard. Trump may be led at any time.
-- Highest trump wins; otherwise highest card of led suit.
-- Successful bidder team: partners get bid, bidder gets bid + 50; opponents 0. Failed contract: bidder -50, partners 0, opponents each receive opponent team's captured card points.
-- First bidder rotates each deal; all-pass deal is abandoned and rotation continues.
-
-## v3 UI/game changes
-- Bidding displays the two current competitors and marks passed players.
-- Leave Game button added. Leaving during a live deal cancels that deal and returns remaining players to the lobby.
-- Partner-card calling uses separate Suit and Card columns.
-- Hidden partnership fixed: server no longer sends unrevealed team identities to clients; partner role is exposed only after a called card is played (full roles shown at result).
-
-
-## v4 scoring visibility
-During a deal, the public display shows only each player's individually captured trick points. Bidder-team and opponent-team totals remain hidden until both called partner cards have actually been played. At that moment all team identities and team totals become public. Final scoring is unchanged.
-
-
-## v5
-Added **Show last hand** during play/results. In 250 terminology, this displays the complete previous five-card trick, with each card labelled by the player who played it. The panel can be shown or hidden and does not reveal any unplayed cards.
-
-
-## v8 addition — No Trump
-The winning bidder may choose **No Trump**. In a no-trump deal, no suit has trump status: players must still follow the led suit when possible, and the highest card of the led suit wins each trick.
-
-
-## v8 change
-During play, each player now gets a private role banner on their own screen: Bidder, Partner, Double Partner, or Opponent. This does not reveal an unrevealed partner to anyone else; public partner markers still appear only when called cards are played.
-
-## Bot players
-The room creator can add bots in the lobby until the table has five seats. Any mix of humans and bots is supported (for example, 2 humans + 3 bots or 1 human + 4 bots). Bots participate in bidding, choose two called partner cards and a trump/No Trump contract when they win the bid, and play legal cards automatically.
-
-Bot decisions are rule-based rather than random. They consider hand strength when bidding, prefer strategically useful partner calls, protect valuable cards, try to feed points to known teammates, avoid unnecessarily trumping a known teammate's winning trick, and treat 3♠ as a special 30-point card. Bot decision code is deliberately given only that bot's own hand plus public play history; it does not inspect another player's or another bot's hidden hand when choosing a card.
-
-
-## Bot pacing
-Bots intentionally pause before bidding, choosing a contract, and playing cards so human players can follow the action. After the fifth card of each trick, all five cards remain visible for about 2.2 seconds before the trick is collected.
-
-
-## Bot v4 polish
-Bidding speech is intentionally brief: bids are announced as the number only (for example, ‘160’) and passes as ‘Pass’, preventing successive bot actions from cutting off long spoken sentences. Cards already played into the running trick are rendered at full brightness; only illegal cards remaining in the local player's hand are dimmed.
-
-## v8 additions
-- Creator-selectable opening rule: Bidder's advantage, or forced 3♣ opening.
-- Optional play timer: Off / 60 / 90 / 120 seconds. Timeout uses the bot decision engine for that player's legal move.
-- Bidding always has a 60-second timeout; timeout means Pass.
-- Last 10 seconds are shown urgently and tick when sound is enabled.
-- Bot strategy tightened to preserve A/K on uncertain teammate tricks and to protect 3♠ from unsafe trump exposure.
-
-
-## v11 flexible bidding
-- The first actual bidder may open at any legal bid from 160 through 250 in increments of 5.
-- When a challenger raises, the incumbent may Stay at that bid, Raise directly to a higher legal bid, or Pass.
-- If the incumbent raises directly, the same challenger retains priority and must Raise above the new bid or Pass.
-- The winner of each head-to-head duel remains incumbent against the next unpassed player.
-
-
-## v13 changes
-- Mobile/touch compatibility pass for bidding and card play.
-- Human-turn timer is armed before the state is broadcast, fixing intermittent missing countdowns.
-- Unexpected disconnects get a 20-second reconnection grace period; explicit Leave remains immediate.
-- Humans may join a full room by replacing an ordinary bot or a bot that replaced a departed player. Watch-as-bot seats remain human-owned and cannot be replaced.
-- Host migrates after a departed host becomes a bot.
-- Bidder-team bots stop drawing trump once all publicly identified opponents are known void in trump, and can establish side suits/create useful voids.
-- Refined 3-spade passing: a bot may pass 3S forward to a known team top-spade catcher, but avoids it when a player before the catcher is known void in spades and may ruff.
-- How-to-play now states natural rank order and the trump winner rule explicitly.
-- Shuffle/deal code is unchanged from v11.
-
-
-## v13 bidding / partner-call refinement
-- Bot bidding was recalibrated so a normal completed auction is centered closer to ~190; 200+ is reserved more often for strong hands.
-- Small bidding variation remains so bots are not deterministic.
-- Partner calls now compare 3♠ against Aces and other control cards instead of over-prioritizing 3♠.
-- If the bidder has strong cards underneath a missing trump Ace, calling that trump Ace gets very high priority.
-- Humans can replace genuine bot-owned seats even when the five-seat lobby is already full before the game starts. Watch-as-bot seats remain protected.
-- Shuffle/deal logic is unchanged.
+Open http://localhost:3000

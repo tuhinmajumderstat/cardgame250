@@ -3,6 +3,9 @@ const app=express(), server=http.createServer(app), io=new Server(server); app.u
 const PORT=process.env.PORT||3000, MIN_BID=160, MAX_BID=250;
 const SUITS=['S','H','D','C'], RANKS=['A','K','Q','J','10','9','8','7','6','5','4','3','2'];
 const rooms=new Map(); const rankValue=r=>13-RANKS.indexOf(r);
+// Reverse changes card STRENGTH only; point values are always unchanged.
+function isReversedSuit(g,s){return !!g.reverse&&(g.trump==='NT'||s===g.trump);}
+function strength(g,c){return isReversedSuit(g,c.s)?14-rankValue(c.r):rankValue(c.r);}
 function deck(){let d=[];for(const s of SUITS)for(const r of RANKS){if(r==='2'&&(s==='C'||s==='D'))continue;d.push({s,r,id:r+s});}return d;}
 function shuffle(a){for(let i=a.length-1;i;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 function pts(c){if(['A','K','Q','J','10'].includes(c.r))return 10;if(c.r==='5')return 5;if(c.r==='3'&&c.s==='S')return 30;return 0;}
@@ -11,9 +14,9 @@ const isBot=(g,i)=>!!g.players[i]&&(!!g.players[i].isBot||!!g.players[i].autoMod
 const botId=()=>`bot:${Math.random().toString(36).slice(2,10)}`;
 function roomCode(){let x;do{x=Math.random().toString(36).slice(2,6).toUpperCase()}while(rooms.has(x));return x;}
 function outcomeDetermined(g){if(g.phase!=='play'||!g.teams||(g.revealedCalls?.size||0)<2)return false;return g.teamPoints[0]>=g.bid||g.teamPoints[1]>250-g.bid;}
-function publicState(g,viewer){const me=g.players.findIndex(p=>p.id===viewer);const revealed=g.revealedPartners||new Set();const allPartnersRevealed=(g.revealedCalls?.size||0)>=2;const isHost=g.hostId===viewer;let privateRole=null;if(me>=0&&g.teams&&['play','result','matchEnd'].includes(g.phase)){if(me===g.bidder)privateRole='bidder';else{const partnerCallCount=(g.callHolders||[]).filter(i=>i===me).length;if(g.teams[me]==='bidder')privateRole=partnerCallCount===2?'double-partner':'partner';else privateRole='opponent';}}return {code:g.code,phase:g.phase,players:g.players.map((p,i)=>({name:p.name,seat:i,score:p.score,dealPoints:p.dealPoints||0,handCount:p.hand.length,isBot:!!p.isBot,autoMode:!!p.autoMode,connected:p.connected!==false,passed:g.passed?.has(i)||false,role:(['result','matchEnd'].includes(g.phase)||i===g.bidder||revealed.has(i)||allPartnersRevealed)?(g.teams?g.teams[i]:null):null})),me,startBidder:g.startBidder,bid:g.bid,incumbent:g.incumbent,challenger:g.challenger,bidTurn:g.bidTurn,bidAction:g.bidAction,bidder:g.bidder,trump:g.trump,calls:g.calls,leader:g.leader,turn:g.turn,trick:g.trick,lastTrick:g.lastTrick||[],teamPoints:(allPartnersRevealed||['result','matchEnd'].includes(g.phase))?g.teamPoints:null,allPartnersRevealed,dealNo:g.dealNo,lastResult:g.lastResult,matchWinners:g.matchWinners||[],hand:me>=0?g.players[me].hand:[],legal:me>=0&&!g.players[me].autoMode?legalCards(g,me):[],isHost,autoMode:me>=0?!!g.players[me].autoMode:false,canStart:g.phase==='lobby'&&g.players.length===5&&isHost,canAddBot:g.phase==='lobby'&&g.players.length<5&&isHost,canNext:g.phase==='result'&&isHost,canEndEarly:(g.matchTarget||0)===0&&outcomeDetermined(g)&&isHost,resolvingTrick:!!g.resolvingTrick,privateRole,openingRule:g.openingRule||'bidder',playTimer:g.playTimer||0,matchTarget:g.matchTarget||0,actionDeadline:g.actionDeadline||null};}
+function publicState(g,viewer){const me=g.players.findIndex(p=>p.id===viewer);const revealed=g.revealedPartners||new Set();const allPartnersRevealed=(g.revealedCalls?.size||0)>=2;const isHost=g.hostId===viewer;let privateRole=null;if(me>=0&&g.teams&&['play','result','matchEnd'].includes(g.phase)){if(me===g.bidder)privateRole='bidder';else{const partnerCallCount=(g.callHolders||[]).filter(i=>i===me).length;if(g.teams[me]==='bidder')privateRole=partnerCallCount===2?'double-partner':'partner';else privateRole='opponent';}}return {code:g.code,phase:g.phase,players:g.players.map((p,i)=>({name:p.name,seat:i,score:p.score,dealPoints:p.dealPoints||0,handCount:p.hand.length,isBot:!!p.isBot,autoMode:!!p.autoMode,connected:p.connected!==false,passed:g.passed?.has(i)||false,role:(['result','matchEnd'].includes(g.phase)||i===g.bidder||revealed.has(i)||allPartnersRevealed)?(g.teams?g.teams[i]:null):null})),me,startBidder:g.startBidder,bid:g.bid,incumbent:g.incumbent,challenger:g.challenger,bidTurn:g.bidTurn,bidAction:g.bidAction,bidder:g.bidder,trump:g.trump,reverse:!!g.reverse,calls:g.calls,leader:g.leader,turn:g.turn,trick:g.trick,lastTrick:g.lastTrick||[],teamPoints:(allPartnersRevealed||['result','matchEnd'].includes(g.phase))?g.teamPoints:null,allPartnersRevealed,dealNo:g.dealNo,lastResult:g.lastResult,matchWinners:g.matchWinners||[],hand:me>=0?g.players[me].hand:[],legal:me>=0&&!g.players[me].autoMode?legalCards(g,me):[],isHost,autoMode:me>=0?!!g.players[me].autoMode:false,canStart:g.phase==='lobby'&&g.players.length===5&&isHost,canAddBot:g.phase==='lobby'&&g.players.length<5&&isHost,canNext:g.phase==='result'&&isHost,canEndEarly:(g.matchTarget||0)===0&&outcomeDetermined(g)&&isHost,resolvingTrick:!!g.resolvingTrick,privateRole,openingRule:g.openingRule||'bidder',playTimer:g.playTimer||0,matchTarget:g.matchTarget||0,actionDeadline:g.actionDeadline||null};}
 function emit(g){for(const p of g.players)if(!p.isBot)io.to(p.id).emit('state',publicState(g,p.id));}
-function newDeal(g){g.dealNo++; const d=shuffle(deck());g.players.forEach((p,i)=>{p.dealPoints=0;p.hand=d.slice(i*10,i*10+10).sort((a,b)=>SUITS.indexOf(a.s)-SUITS.indexOf(b.s)||RANKS.indexOf(a.r)-RANKS.indexOf(b.r));});g.phase='bidding';g.bid=null;g.incumbent=null;g.challenger=null;g.bidTurn=g.startBidder;g.bidAction='open';g.passed=new Set();g.bidder=null;g.trump=null;g.calls=[];g.callHolders=[];g.teams=null;g.revealedPartners=new Set();g.revealedCalls=new Set();g.trick=[];g.lastTrick=[];g.leader=null;g.turn=null;g.teamPoints=[0,0];g.lastResult=null;g.resolvingTrick=false;g.playedCards=[];g.firstLeadPending=false;emit(g);armActionTimer(g);scheduleBot(g);}
+function newDeal(g){g.dealNo++; const d=shuffle(deck());g.players.forEach((p,i)=>{p.dealPoints=0;p.hand=d.slice(i*10,i*10+10).sort((a,b)=>SUITS.indexOf(a.s)-SUITS.indexOf(b.s)||RANKS.indexOf(a.r)-RANKS.indexOf(b.r));});g.phase='bidding';g.bid=null;g.incumbent=null;g.challenger=null;g.bidTurn=g.startBidder;g.bidAction='open';g.passed=new Set();g.bidder=null;g.trump=null;g.reverse=false;g.calls=[];g.callHolders=[];g.teams=null;g.revealedPartners=new Set();g.revealedCalls=new Set();g.trick=[];g.lastTrick=[];g.leader=null;g.turn=null;g.teamPoints=[0,0];g.lastResult=null;g.resolvingTrick=false;g.playedCards=[];g.firstLeadPending=false;emit(g);armActionTimer(g);scheduleBot(g);}
 function advanceOpening(g,idx){g.passed.add(idx);let j=next(idx);while(g.passed.has(j)&&j!==idx)j=next(j);if(g.passed.size===5){g.lastResult={text:'All five players passed. Deal abandoned.'};g.startBidder=next(g.startBidder);return newDeal(g);}g.bidTurn=j;g.bidAction='open';}
 function nextUnpassedAfter(g,idx){let j=next(idx);while(g.passed.has(j)&&j!==idx)j=next(j);return j;}
 function startChallenge(g){const c=nextUnpassedAfter(g,g.incumbent);if(c===g.incumbent){return winBid(g,g.incumbent);}g.challenger=c;g.bidTurn=c;g.bidAction='raise';}
@@ -22,26 +25,61 @@ function handlePass(g,i){if(g.phase!=='bidding'||g.bidTurn!==i)return;if(g.bidAc
 function handleBid(g,i,amount){amount=Number(amount);if(g.phase!=='bidding'||g.bidTurn!==i||amount%5||amount<MIN_BID||amount>MAX_BID)return;if(g.bidAction==='open'){g.bid=amount;g.incumbent=i;startChallenge(g);return;}if(g.bidAction==='raise'){if(amount<=g.bid)return;g.bid=amount;g.bidTurn=g.incumbent;g.bidAction='respond';return;}if(g.bidAction==='respond'&&i===g.incumbent){if(amount<=g.bid)return;g.bid=amount;g.bidTurn=g.challenger;g.bidAction='raise';return;}}
 function stay(g,i){if(g.phase!=='bidding'||g.bidTurn!==i||g.bidAction!=='respond'||i!==g.incumbent)return;g.bidTurn=g.challenger;g.bidAction='raise';}
 function legalCards(g,i){if(g.phase!=='play'||g.turn!==i)return[];const h=g.players[i].hand;if(g.firstLeadPending&&g.openingRule==='3C'){return h.some(c=>c.id==='3C')?['3C']:[];}if(!g.trick.length)return h.map(c=>c.id);const suit=g.trick[0].card.s;const follow=h.filter(c=>c.s===suit);return (follow.length?follow:h).map(c=>c.id);}
-function trickWinner(g){const lead=g.trick[0].card.s;let candidates=g.trump==='NT'?[]:g.trick.filter(x=>x.card.s===g.trump);if(!candidates.length)candidates=g.trick.filter(x=>x.card.s===lead);return candidates.reduce((a,b)=>rankValue(a.card.r)>rankValue(b.card.r)?a:b).player;}
+function trickWinner(g){const lead=g.trick[0].card.s;let candidates=g.trump==='NT'?[]:g.trick.filter(x=>x.card.s===g.trump);if(!candidates.length)candidates=g.trick.filter(x=>x.card.s===lead);return candidates.reduce((a,b)=>strength(g,a.card)>strength(g,b.card)?a:b).player;}
 function finishDeal(g){clearActionTimer(g);const bidderTeam=g.teams.map((t,i)=>t==='bidder'?i:null).filter(x=>x!==null);const opp=g.teams.map((t,i)=>t==='opponent'?i:null).filter(x=>x!==null);const bp=g.teamPoints[0], op=g.teamPoints[1], ok=bp>=g.bid;if(ok){for(const i of bidderTeam)g.players[i].score+=i===g.bidder?g.bid+50:g.bid;}else{g.players[g.bidder].score-=50;for(const i of opp)g.players[i].score+=op;}g.lastResult={text:ok?`Contract made: ${bp} ≥ ${g.bid}.`:`Contract failed: ${bp} < ${g.bid}. Opponents captured ${op}.`,bidderPoints:bp,opponentPoints:op,success:ok};g.startBidder=next(g.startBidder);const target=g.matchTarget||0;if(target>0){const crossed=g.players.map((p,i)=>({i,score:p.score})).filter(x=>x.score>=target);if(crossed.length){const high=Math.max(...crossed.map(x=>x.score));g.matchWinners=crossed.filter(x=>x.score===high).map(x=>x.i);const names=g.matchWinners.map(i=>g.players[i].name);g.lastResult.text+=` Match over — ${names.join(' & ')} ${names.length>1?'are joint winners':'wins'} with ${high} points.`;g.phase='matchEnd';return emit(g);}}g.matchWinners=[];g.phase='result';emit(g);}
 function play(g,i,id){if(g.resolvingTrick||!legalCards(g,i).includes(id))return;clearActionTimer(g);const p=g.players[i], k=p.hand.findIndex(c=>c.id===id), card=p.hand.splice(k,1)[0];if(g.calls.includes(id)){g.revealedCalls.add(id);if(i!==g.bidder)g.revealedPartners.add(i);}g.trick.push({player:i,card});g.playedCards.push({player:i,card});if(g.firstLeadPending&&id==='3C')g.firstLeadPending=false;if(g.trick.length<5){g.turn=next(i);emit(g);armActionTimer(g);scheduleBot(g);return;}g.resolvingTrick=true;g.turn=null;emit(g);setTimeout(()=>{if(!rooms.has(g.code)||g.phase!=='play'||g.trick.length!==5)return;const w=trickWinner(g), tp=g.trick.reduce((s,x)=>s+pts(x.card),0);g.players[w].dealPoints=(g.players[w].dealPoints||0)+tp;g.teamPoints[g.teams[w]==='bidder'?0:1]+=tp;g.leader=w;g.turn=w;g.lastTrick=g.trick;g.trick=[];g.resolvingTrick=false;if(g.players.every(p=>!p.hand.length))return finishDeal(g);emit(g);armActionTimer(g);scheduleBot(g);},2600);}
 
-function handStrength(g,i){
-  const h=g.players[i].hand; let best=-999, bestTrump='NT';
-  for(const tr of [...SUITS,'NT']){
-    let v=h.reduce((z,c)=>z+pts(c),0)*0.16;
-    for(const c of h){const rv=rankValue(c.r);if(tr!=='NT'&&c.s===tr)v+=rv*1.15+(pts(c)?2.5:0);else if(c.r==='A')v+=7;else if(c.r==='K')v+=3.5;}
-    if(tr==='NT')v+=h.filter(c=>c.r==='A').length*5+h.filter(c=>c.r==='K').length*2;
-    if(h.some(c=>c.id==='3S')&&h.some(c=>['AS','KS'].includes(c.id)))v+=7;
-    if(v>best){best=v;bestTrump=tr;}
+function normalContractScore(h,tr){
+  let v=h.reduce((z,c)=>z+pts(c),0)*0.16;
+  for(const c of h){const rv=rankValue(c.r);if(tr!=='NT'&&c.s===tr)v+=rv*1.15+(pts(c)?2.5:0);else if(c.r==='A')v+=7;else if(c.r==='K')v+=3.5;}
+  if(tr==='NT')v+=h.filter(c=>c.r==='A').length*5+h.filter(c=>c.r==='K').length*2;
+  if(h.some(c=>c.id==='3S')&&h.some(c=>['AS','KS'].includes(c.id)))v+=7;
+  return v;
+}
+function reverseContractScore(h,tr){
+  // Reverse is intentionally conservative: concentrated low cards can make a suit-reverse hand excellent,
+  // while Reverse NT needs broad low-card control across several suits to overcome a large rarity penalty.
+  const fake={trump:tr,reverse:true};let v=h.reduce((z,c)=>z+pts(c),0)*0.13;
+  if(tr!=='NT'){
+    const ts=h.filter(c=>c.s===tr), topAvail=tr==='S'||tr==='H'?'2':'3';
+    for(const c of ts)v+=strength(fake,c)*1.28+(pts(c)?1.8:0);
+    v+=Math.max(0,ts.length-2)*4;
+    if(ts.some(c=>c.r===topAvail))v+=12;
+    // A run of several near-top reverse trumps is the classic reason to risk Reverse.
+    const strong=ts.filter(c=>strength(fake,c)>=9).length;if(strong>=3)v+=(strong-2)*10;
+    for(const c of h.filter(c=>c.s!==tr)){if(c.r==='A')v+=7;else if(c.r==='K')v+=3.5;}
+    v-=10; // Reverse suit is uncommon: it must earn its way into the contract.
+  }else{
+    const controls=SUITS.map(s=>h.filter(c=>c.s===s).map(c=>strength(fake,c)).sort((a,b)=>b-a)[0]||0);
+    const strongSuits=controls.filter(x=>x>=10).length;
+    for(const c of h)v+=strength(fake,c)*0.38;
+    v+=controls.reduce((a,b)=>a+b,0)*0.55+strongSuits*6;
+    v-=32; // Reverse No Trump is VERY rare and needs broad low-card strength.
+    if(strongSuits<3)v-=18;
   }
-  // Calibrated so a five-player auction usually finishes around 190.
-  // 200+ should normally require a genuinely strong hand, while exceptional hands can still go much higher.
+  return v;
+}
+function evaluateContracts(g,i){
+  const h=g.players[i].hand;let bestNormal=-999,bestNormalTrump='NT';
+  for(const tr of [...SUITS,'NT']){const v=normalContractScore(h,tr);if(v>bestNormal){bestNormal=v;bestNormalTrump=tr;}}
+  let bestReverse=-999,bestReverseTrump='NT';
+  for(const tr of [...SUITS,'NT']){const v=reverseContractScore(h,tr);if(v>bestReverse){bestReverse=v;bestReverseTrump=tr;}}
+  // Reverse suit must be clearly better to become the preferred contract. Close calls stay Normal most of the time.
+  let trump=bestNormalTrump, reverse=false, effectiveBest=bestNormal;
+  const revNT=bestReverseTrump==='NT';
+  const margin=bestReverse-bestNormal;
+  if(!revNT&&margin>=9){reverse=true;trump=bestReverseTrump;effectiveBest=bestReverse;}
+  else if(!revNT&&margin>=4&&Math.random()<0.22){reverse=true;trump=bestReverseTrump;effectiveBest=bestReverse;}
+  // Reverse NT has no close-call lottery: only an exceptional all-suit low hand selects it.
+  else if(revNT&&margin>=18){reverse=true;trump='NT';effectiveBest=bestReverse;}
+  return {bestNormal,bestNormalTrump,bestReverse,bestReverseTrump,trump,reverse,effectiveBest};
+}
+function handStrength(g,i){
+  const e=evaluateContracts(g,i), best=e.effectiveBest;
   let ceiling=Math.max(155,Math.min(230,150+5*Math.floor(best/7)));
-  // Small human-like variation, but never enough to turn a weak hand into a reckless one.
   const jitter=Math.random()<0.22?(Math.random()<0.5?-5:5):0;
   ceiling=Math.max(155,Math.min(230,ceiling+jitter));
-  return {ceiling,bestTrump};
+  return {ceiling,bestTrump:e.trump,bestReverse:e.reverse};
 }
 function botBid(g,i){const {ceiling}=handStrength(g,i);if(g.bidAction==='open'){if(ceiling>=160)handleBid(g,i,160);else handlePass(g,i);return;}if(g.bidAction==='raise'){const min=g.bid+5;if(min>ceiling)handlePass(g,i);else{let jump=min;if(ceiling-min>=20&&Math.random()<.35)jump=Math.min(ceiling,min+10);handleBid(g,i,jump);}return;}if(g.bidAction==='respond'){if(g.bid<=ceiling)stay(g,i);else handlePass(g,i);}}
 function beginPlayAfterContract(g){
@@ -53,20 +91,33 @@ function beginPlayAfterContract(g){
   emit(g);armActionTimer(g);scheduleBot(g);
 }
 function botContract(g,i){
-  const h=g.players[i].hand, own=new Set(h.map(c=>c.id)), {bestTrump}=handStrength(g,i);let trump=bestTrump;
+  const h=g.players[i].hand, own=new Set(h.map(c=>c.id)), evald=evaluateContracts(g,i);let trump=evald.trump, reverse=evald.reverse;
   const available=deck().filter(c=>!own.has(c.id));
   const suitCount=s=>h.filter(c=>c.s===s).length, has=id=>own.has(id);
-  const highTrumpCount=trump==='NT'?0:h.filter(c=>c.s===trump&&['K','Q','J','10'].includes(c.r)).length;
+  const highTrumpCount=trump==='NT'?0:h.filter(c=>c.s===trump&&(!reverse?['K','Q','J','10'].includes(c.r):strength({trump,reverse:true},c)>=9)).length;
   const score=c=>{
     let v=0;
-    // Aces are broad control cards and should compete strongly with the valuable 3♠ call.
-    if(c.r==='A')v=100;
-    else if(c.r==='K')v=58;
-    else if(c.r==='Q')v=32;
-    else if(c.r==='J')v=20;
-    else if(c.r==='10')v=15;
+    const cg={trump,reverse};
+    // In Reverse, effective top controls replace printed Aces. Missing #1 reverse trump is especially valuable.
+    if(reverse){
+      const topRank=c.s==='S'||c.s==='H'?'2':'3';
+      if(trump!=='NT'&&c.s===trump&&c.r===topRank){v+=155;if(highTrumpCount>=2)v+=55;}
+      if(trump==='NT'&&c.r===topRank)v+=70;
+      if(isReversedSuit(cg,c.s))v+=Math.max(0,strength(cg,c)-8)*5;
+    }
+    // Printed high cards remain valuable point/control calls in normal suits. In an affected Reverse suit,
+    // effective low-card control takes precedence instead of pretending the Ace is strongest.
+    if(!isReversedSuit(cg,c.s)){
+      if(c.r==='A')v+=100;
+      else if(c.r==='K')v+=58;
+      else if(c.r==='Q')v+=32;
+      else if(c.r==='J')v+=20;
+      else if(c.r==='10')v+=15;
+    }else{
+      v+=Math.max(0,strength(cg,c)-7)*7;
+    }
     // Missing trump Ace is especially important when our trump strength sits underneath it.
-    if(trump!=='NT'&&c.r==='A'&&c.s===trump){v+=30;if(highTrumpCount>=2)v+=45;}
+    if(!reverse&&trump!=='NT'&&c.r==='A'&&c.s===trump){v+=30;if(highTrumpCount>=2)v+=45;}
     // 3♠ is worth 30 points, but it is not an automatic partner call. If we already own
     // A♠/K♠ we have a realistic chance to capture it naturally, so other Aces gain value.
     if(c.id==='3S'){v+=82;if(has('AS'))v-=32;else if(has('KS'))v-=18;if(trump==='S'&&has('AS'))v-=10;}
@@ -79,9 +130,9 @@ function botContract(g,i){
     return v;
   };
   const calls=available.sort((a,b)=>score(b)-score(a)).slice(0,2).map(c=>c.id);
-  g.calls=calls;g.trump=trump;const holders=calls.map(id=>g.players.findIndex(p=>p.hand.some(c=>c.id===id)));g.callHolders=holders;const team=new Set([g.bidder,...holders]);g.teams=g.players.map((_,j)=>team.has(j)?'bidder':'opponent');g.revealedPartners=new Set();g.revealedCalls=new Set();beginPlayAfterContract(g);
+  g.calls=calls;g.trump=trump;g.reverse=reverse;const holders=calls.map(id=>g.players.findIndex(p=>p.hand.some(c=>c.id===id)));g.callHolders=holders;const team=new Set([g.bidder,...holders]);g.teams=g.players.map((_,j)=>team.has(j)?'bidder':'opponent');g.revealedPartners=new Set();g.revealedCalls=new Set();beginPlayAfterContract(g);
 }
-function currentTrickWinner(g){if(!g.trick.length)return null;const lead=g.trick[0].card.s;let a=g.trump==='NT'?[]:g.trick.filter(x=>x.card.s===g.trump);if(!a.length)a=g.trick.filter(x=>x.card.s===lead);return a.reduce((x,y)=>rankValue(x.card.r)>rankValue(y.card.r)?x:y).player;}
+function currentTrickWinner(g){if(!g.trick.length)return null;const lead=g.trick[0].card.s;let a=g.trump==='NT'?[]:g.trick.filter(x=>x.card.s===g.trump);if(!a.length)a=g.trick.filter(x=>x.card.s===lead);return a.reduce((x,y)=>strength(g,x.card)>strength(g,y.card)?x:y).player;}
 function botKnowledge(g,i){
   // Bot memory is human-like: own hand + information that has appeared publicly.
   // It never receives another player's hidden hand. Nothing here is exposed in the UI.
@@ -94,7 +145,7 @@ function botKnowledge(g,i){
   for(let z=0;z+4<played.length;z+=5){const five=played.slice(z,z+5), lead=five[0].card.s;for(const x of five)if(x.card.s!==lead)voids[x.player].add(lead);}
   if(g.trick.length){const lead=g.trick[0].card.s;for(const x of g.trick)if(x.card.s!==lead)voids[x.player].add(lead);}
   const trumpPlayed=g.trump==='NT'?0:played.filter(x=>x.card.s===g.trump).length;
-  return {hand,legal:new Set(legalCards(g,i)),trick:g.trick.slice(),played,trump:g.trump,calls:g.calls.slice(),bidder:g.bidder,myTeam:g.teams?.[i],revealed:new Set(g.revealedPartners||[]),playedIds,unseen,voids,trumpPlayed};
+  return {hand,legal:new Set(legalCards(g,i)),trick:g.trick.slice(),played,trump:g.trump,reverse:!!g.reverse,calls:g.calls.slice(),bidder:g.bidder,myTeam:g.teams?.[i],revealed:new Set(g.revealedPartners||[]),playedIds,unseen,voids,trumpPlayed};
 }
 function knownTeammate(g,k,i,j){
   if(j===i)return true;
@@ -109,7 +160,7 @@ function cardBeats(g,a,b,lead){
     if(a.s!==g.trump&&b.s===g.trump)return false;
   }
   if(a.s!==b.s)return a.s===lead&&b.s!==lead;
-  return rankValue(a.r)>rankValue(b.r);
+  return strength(g,a)>strength(g,b);
 }
 function currentWinningEntry(g){
   if(!g.trick.length)return null;const lead=g.trick[0].card.s;let win=g.trick[0];
@@ -137,14 +188,14 @@ function safelyWinningForBot(g,k,i,winner){
 }
 function highestOutstandingInSuit(k,s){
   const cards=deck().filter(c=>c.s===s&&!k.playedIds.has(c.id));
-  return cards.sort((a,b)=>rankValue(b.r)-rankValue(a.r))[0]||null;
+  return cards.sort((a,b)=>strength({trump:k.trump,reverse:k.reverse},b)-strength({trump:k.trump,reverse:k.reverse},a))[0]||null;
 }
 function chooseBotCard(g,i){
   const k=botKnowledge(g,i), legal=k.hand.filter(c=>k.legal.has(c.id));if(legal.length<=1)return legal[0]?.id;
   const teammate=j=>knownTeammate(g,k,i,j), winner=currentTrickWinner(g), current=currentWinningEntry(g);
   const partnerWinning=winner!=null&&teammate(winner), safePartnerWin=partnerWinning&&safelyWinningForBot(g,k,i,winner);
   const trickPoints=k.trick.reduce((z,x)=>z+pts(x.card),0), bidderTeam=k.myTeam==='bidder';
-  const rankAsc=(a,b)=>rankValue(a.r)-rankValue(b.r), pointsAsc=(a,b)=>pts(a)-pts(b)||rankValue(a.r)-rankValue(b.r);
+  const eff=c=>strength(g,c), rankAsc=(a,b)=>eff(a)-eff(b), pointsAsc=(a,b)=>pts(a)-pts(b)||eff(a)-eff(b);
   const controlRank=c=>c.r==='A'?5:c.r==='K'?4:c.r==='Q'?3:c.r==='J'?2:c.r==='10'?1:0;
   const wouldWin=c=>{const temp={...g,trick:[...g.trick,{player:i,card:c}]};return currentTrickWinner(temp)===i;};
   const winners=legal.filter(wouldWin), losers=legal.filter(c=>!wouldWin(c));
@@ -174,9 +225,11 @@ function chooseBotCard(g,i){
   // 3♠ is 30-point cargo. Deliver it only to a teammate whose trick is actually safe.
   if(bidderTeam&&safePartnerWin){const three=legal.find(c=>c.id==='3S'&&!wouldWin(c));if(three)return three.id;}
 
-  // If teammate has exposed 3♠ and our team is NOT already safely winning, rescue it with the cheapest sufficient winner.
-  if(bidderTeam&&k.trick.some(x=>x.card.id==='3S'&&teammate(x.player))&&!safePartnerWin&&winners.length){
-    return winners.slice().sort((a,b)=>rankValue(a.r)-rankValue(b.r)||controlRank(a)-controlRank(b))[0].id;
+  // 3♠ EMERGENCY: 30 exposed points matter regardless of who played it. If a known teammate is not
+  // already guaranteed to win, capture it with the cheapest sufficient legal winner. This covers a bidder,
+  // revealed partner, hidden partner, or even an opponent/forced play. In Reverse, 'winner' uses effective rank.
+  if(k.trick.some(x=>x.card.id==='3S')&&!safePartnerWin&&winners.length){
+    return winners.slice().sort((a,b)=>eff(a)-eff(b)||controlRank(a)-controlRank(b))[0].id;
   }
 
   // Lead strategy for bidder team: strip opponents' trump, but do not blindly burn multiple top controls.
@@ -189,8 +242,8 @@ function chooseBotCard(g,i){
     const opponentsKnownOut=knownOpponents.length>0&&knownOpponents.every(j=>k.voids[j].has(g.trump));
     if(myTrumps.length&&outsideTrump>0&&!opponentsKnownOut){
       const calledOutstanding=new Set(g.calls.filter(id=>id.endsWith(g.trump)&&!k.playedIds.has(id)));
-      const sorted=myTrumps.slice().sort((a,b)=>rankValue(b.r)-rankValue(a.r)), top=sorted[0];
-      const higher=deck().filter(c=>c.s===g.trump&&rankValue(c.r)>rankValue(top.r)&&!k.playedIds.has(c.id));
+      const sorted=myTrumps.slice().sort((a,b)=>eff(b)-eff(a)), top=sorted[0];
+      const higher=deck().filter(c=>c.s===g.trump&&eff(c)>eff(top)&&!k.playedIds.has(c.id));
       if(!higher.length||higher.every(c=>calledOutstanding.has(c.id)))return top.id;
       const expendable=myTrumps.filter(c=>!['A','K'].includes(c.r)&&c.id!=='3S');
       return (expendable.length?expendable:myTrumps).slice().sort(rankAsc)[0].id;
@@ -201,7 +254,7 @@ function chooseBotCard(g,i){
   if(!k.trick.length&&bidderTeam){
     const nonTrump=legal.filter(c=>g.trump==='NT'||c.s!==g.trump).filter(c=>c.id!=='3S');
     const sureSideWinners=nonTrump.filter(c=>{
-      const higher=deck().filter(x=>x.s===c.s&&rankValue(x.r)>rankValue(c.r)&&!k.playedIds.has(x.id)&&!k.hand.some(h=>h.id===x.id));
+      const higher=deck().filter(x=>x.s===c.s&&eff(x)>eff(c)&&!k.playedIds.has(x.id)&&!k.hand.some(h=>h.id===x.id));
       return higher.length===0;
     });
     if(sureSideWinners.length)return sureSideWinners.slice().sort((a,b)=>pts(b)-pts(a)||rankValue(b.r)-rankValue(a.r))[0].id;
@@ -218,7 +271,7 @@ function chooseBotCard(g,i){
       const playedSeats=new Set(g.trick.map(x=>x.player));
       const future=[];let seat=next(i);while(seat!==g.leader){if(!playedSeats.has(seat))future.push(seat);seat=next(seat);}
       const outstanding=deck().filter(c=>c.s==='S'&&!k.playedIds.has(c.id)&&!k.hand.some(h=>h.id===c.id));
-      outstanding.sort((a,b)=>rankValue(b.r)-rankValue(a.r));
+      outstanding.sort((a,b)=>eff(b)-eff(a));
       const top=outstanding[0];
       if(top&&g.calls.includes(top.id)){
         const catcher=g.callHolders?.[g.calls.indexOf(top.id)];
@@ -237,7 +290,7 @@ function chooseBotCard(g,i){
     const own=new Set(k.hand.map(c=>c.id)), otherCalls=g.calls.filter(id=>!own.has(id)&&!k.playedIds.has(id));
     for(const id of otherCalls){
       const called=deck().find(c=>c.id===id);if(!called)continue;
-      const safeCall=called.r==='A'||(called.r==='K'&&k.playedIds.has('A'+called.s));if(!safeCall)continue;
+      const top=highestOutstandingInSuit(k,called.s);const safeCall=top&&top.id===called.id;if(!safeCall)continue;
       const feed=legal.filter(c=>c.s===called.s&&c.id!==id&&pts(c)>0&&c.id!=='3S'&&!['A','K','Q','J'].includes(c.r));
       if(feed.length)return disposableFeed(feed).id;
     }
@@ -256,13 +309,13 @@ function chooseBotCard(g,i){
 
   // Use a called A/K to reveal/secure partnership when points genuinely need saving, not just for revelation.
   if(bidderTeam&&winners.length&&trickPoints>0&&!safePartnerWin){
-    const calledWinner=winners.filter(c=>g.calls.includes(c.id)).sort((a,b)=>rankValue(a.r)-rankValue(b.r));
+    const calledWinner=winners.filter(c=>g.calls.includes(c.id)).sort((a,b)=>eff(a)-eff(b));
     if(calledWinner.length)return calledWinner[0].id;
   }
 
   // Opponent or uncertain winner: capture meaningful exposed points with the cheapest sufficient winner.
   if(winners.length&&!partnerWinning&&(trickPoints>=10||k.trick.length===4)){
-    return winners.slice().sort((a,b)=>rankValue(a.r)-rankValue(b.r)||controlRank(a)-controlRank(b))[0].id;
+    return winners.slice().sort((a,b)=>eff(a)-eff(b)||controlRank(a)-controlRank(b))[0].id;
   }
 
   // Default conservation: protect 3♠, A/K, then Q/J when a cheap legal loser exists.
@@ -345,7 +398,7 @@ io.on('connection',s=>{
   s.on('pass',()=>{const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id);if(g.players[i]?.autoMode)return;handlePass(g,i);emit(g);armActionTimer(g);scheduleBot(g);});
   s.on('bid',a=>{const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id);if(g.players[i]?.autoMode)return;handleBid(g,i,a);emit(g);armActionTimer(g);scheduleBot(g);});
   s.on('stay',()=>{const g=findRoom(s.id);if(!g)return;const i=g.players.findIndex(p=>p.id===s.id);if(g.players[i]?.autoMode)return;stay(g,i);emit(g);armActionTimer(g);scheduleBot(g);});
-  s.on('contract',({calls,trump})=>{const g=findRoom(s.id);if(!g||g.phase!=='contract'||g.players[g.bidder].id!==s.id||g.players[g.bidder].autoMode||![...SUITS,'NT'].includes(trump)||!Array.isArray(calls)||calls.length!==2||calls[0]===calls[1])return;const own=new Set(g.players[g.bidder].hand.map(c=>c.id));if(calls.some(x=>own.has(x)||!deck().some(c=>c.id===x)))return;g.calls=calls;g.trump=trump;const holders=calls.map(id=>g.players.findIndex(p=>p.hand.some(c=>c.id===id)));g.callHolders=holders;const team=new Set([g.bidder,...holders]);g.teams=g.players.map((_,i)=>team.has(i)?'bidder':'opponent');g.revealedPartners=new Set();g.revealedCalls=new Set();beginPlayAfterContract(g);});
+  s.on('contract',({calls,trump,reverse})=>{const g=findRoom(s.id);if(!g||g.phase!=='contract'||g.players[g.bidder].id!==s.id||g.players[g.bidder].autoMode||![...SUITS,'NT'].includes(trump)||!Array.isArray(calls)||calls.length!==2||calls[0]===calls[1])return;const own=new Set(g.players[g.bidder].hand.map(c=>c.id));if(calls.some(x=>own.has(x)||!deck().some(c=>c.id===x)))return;g.calls=calls;g.trump=trump;g.reverse=!!reverse;const holders=calls.map(id=>g.players.findIndex(p=>p.hand.some(c=>c.id===id)));g.callHolders=holders;const team=new Set([g.bidder,...holders]);g.teams=g.players.map((_,i)=>team.has(i)?'bidder':'opponent');g.revealedPartners=new Set();g.revealedCalls=new Set();beginPlayAfterContract(g);});
   s.on('play',id=>{const g=findRoom(s.id);if(g){const i=g.players.findIndex(p=>p.id===s.id);if(!g.players[i]?.autoMode)play(g,i,id);}});
   s.on('nextDeal',()=>{const g=findRoom(s.id);if(g&&g.phase==='result'&&g.hostId===s.id)newDeal(g);});
   s.on('endEarly',()=>{const g=findRoom(s.id);if(g&&g.hostId===s.id&&(g.matchTarget||0)===0&&outcomeDetermined(g)&&!g.resolvingTrick)finishDeal(g);});
