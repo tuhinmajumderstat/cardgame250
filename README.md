@@ -59,13 +59,13 @@ After winning the bidding, the bidder:
 
 1. Calls **two specific cards** as partner cards.
 2. Chooses the trump suit or **No Trump**.
-3. May choose a **Reverse** contract.
+3. May choose a **Reverse** trump.
 
 The holders of the called cards become the bidder's partners.
 
 Their identities remain hidden until the corresponding called cards are actually played. If one player holds both called cards, that player becomes the **double partner**.
 
-This creates an unusual feature of the game: players may privately know that they are partners while the rest of the table does not yet know their identity.
+This creates an unusual feature of the game: players may privately know that they are partners (or double partner) or non-partners while the rest of the table does not yet know their identity.
 
 ## ♠️ Playing Tricks
 
@@ -84,7 +84,7 @@ The winner of each trick leads the next trick.
 
 Each deal consists of **10 tricks**.
 
-## 🔄 Reverse Contracts
+## 🔄 Reverse Trumps
 
 The bidder can optionally select **Reverse**.
 
@@ -102,7 +102,7 @@ Card point values never change, so **3♠ remains worth 30 points** even under R
 
 ## 🤖 Rule-Based Bot Strategy
 
-The bots are not random card players. Their behavior is based on a collection of rule-based strategic heuristics designed specifically for 250.
+The bots are not random card players. Their behavior is based on a collection of rule-based strategic heuristics (based on how humans play) designed specifically for 250.
 
 Bots use only information legitimately available to their seat, including:
 
@@ -130,7 +130,7 @@ The strategy includes:
 
 ### The 3♠ Problem
 
-Because 3♠ is worth **30 points**, it requires substantially different strategy from an ordinary low spade.
+Because 3♠ is worth **30 points** yet ranked lower, it requires substantially different strategy from an ordinary low spade.
 
 Bots attempt to protect it when necessary, identify opportunities to feed it to a teammate's winning trick, use known partner controls such as A♠ and K♠, account for seating position and known trump danger, and preserve redundant high-card controls once the 3♠ has been safely captured by the team.
 
